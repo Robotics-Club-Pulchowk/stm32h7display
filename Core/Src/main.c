@@ -28,6 +28,7 @@
 #include "lcd.h"
 #include "mpu.h"
 #include "touch.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -38,11 +39,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-/* Properly centered button for 480x272 display */
-#define BUTTON_X1   160
-#define BUTTON_Y1   96
-#define BUTTON_X2   320
-#define BUTTON_Y2   176
+#define BUTTON_WIDTH     160
+#define BUTTON_HEIGHT    80
+#define BUTTON_TEXT      "CLICK ME"
+#define BUTTON_FONT_SIZE 24
 
 /* USER CODE END PD */
 
@@ -56,6 +56,10 @@
 /* USER CODE BEGIN PV */
 
 uint8_t color_state = 0;
+uint16_t button_x1 = 0;
+uint16_t button_y1 = 0;
+uint16_t button_x2 = 0;
+uint16_t button_y2 = 0;
 
 /* USER CODE END PV */
 
@@ -75,20 +79,40 @@ void change_background(void);
   */
 void draw_interface(void)
 {
-    /* Draw centered green button */
-    lcd_fill(BUTTON_X1, BUTTON_Y1, BUTTON_X2, BUTTON_Y2, GREEN);
+    uint16_t btn_w = BUTTON_WIDTH;
+    uint16_t btn_h = BUTTON_HEIGHT;
+    uint16_t text_len = (uint16_t)strlen(BUTTON_TEXT);
+    uint16_t text_w = text_len * (BUTTON_FONT_SIZE / 2);
+    uint16_t text_h = BUTTON_FONT_SIZE;
+    uint16_t text_x;
+    uint16_t text_y;
+
+    if (btn_w > lcddev.width) btn_w = lcddev.width;
+    if (btn_h > lcddev.height) btn_h = lcddev.height;
+
+    button_x1 = (lcddev.width - btn_w) / 2;
+    button_y1 = (lcddev.height - btn_h) / 2;
+    button_x2 = button_x1 + btn_w - 1;
+    button_y2 = button_y1 + btn_h - 1;
+
+    lcd_fill(button_x1, button_y1, button_x2, button_y2, GREEN);
 
     /* Match text background with button */
     g_back_color = GREEN;
 
-    /* Draw centered text */
+    if (text_w > btn_w) text_w = btn_w;
+    if (text_h > btn_h) text_h = btn_h;
+
+    text_x = button_x1 + (btn_w - text_w) / 2;
+    text_y = button_y1 + (btn_h - text_h) / 2;
+
     lcd_show_string(
-        185,
-        124,
-        120,
-        30,
-        24,
-        "CLICK ME",
+        text_x,
+        text_y,
+        text_w,
+        text_h,
+        BUTTON_FONT_SIZE,
+        BUTTON_TEXT,
         WHITE
     );
 }
@@ -185,8 +209,8 @@ int main(void)
           uint16_t y = tp_dev.y[0];
 
           /* Check if touch is inside button */
-          if ((x >= BUTTON_X1) && (x <= BUTTON_X2) &&
-              (y >= BUTTON_Y1) && (y <= BUTTON_Y2))
+          if ((x >= button_x1) && (x <= button_x2) &&
+              (y >= button_y1) && (y <= button_y2))
           {
               change_background();
 
