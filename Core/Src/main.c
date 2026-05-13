@@ -27,6 +27,7 @@
 #include "sdram.h"
 #include "lcd.h"
 #include "mpu.h"
+#include "touch.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,6 +37,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define BUTTON_X1   140
+#define BUTTON_Y1   90
+#define BUTTON_X2   340
+#define BUTTON_Y2   170
 
 /* USER CODE END PD */
 
@@ -48,15 +54,65 @@
 
 /* USER CODE BEGIN PV */
 
+uint8_t color_state = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
 
+void draw_interface(void);
+void change_background(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/**
+  * @brief Draw UI
+  */
+void draw_interface(void)
+{
+    /* Draw green button */
+    lcd_fill(BUTTON_X1, BUTTON_Y1, BUTTON_X2, BUTTON_Y2, GREEN);
+
+    /* Match text background to button color */
+    g_back_color = GREEN;
+
+    /* Draw text */
+    lcd_show_string(175, 115, 140, 40, 24, "CLICK ME", WHITE);
+}
+
+/**
+  * @brief Change background color
+  */
+void change_background(void)
+{
+    color_state++;
+
+    if (color_state >= 3)
+    {
+        color_state = 0;
+    }
+
+    switch (color_state)
+    {
+        case 0:
+            lcd_clear(BLUE);
+            break;
+
+        case 1:
+            lcd_clear(RED);
+            break;
+
+        case 2:
+            lcd_clear(BLACK);
+            break;
+    }
+
+    draw_interface();
+}
 
 /* USER CODE END 0 */
 
@@ -81,42 +137,56 @@ int main(void)
 
   /* Configure the system clock */
   /* USER CODE BEGIN SysInit */
-  sys_stm32_clock_init(192, 5, 2, 4);   /* Set system clock to 480MHz */
+  sys_stm32_clock_init(192, 5, 2, 4);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
 
   /* USER CODE BEGIN 2 */
-  mpu_memory_protection();   /* MPU - must be first */
-  delay_init(480);           /* Init delay at 480MHz */
-  sdram_init();              /* Init SDRAM - must be before LCD */
-  lcd_init();                /* Init LCD */
 
-  /* First test - fill screen red */
-  lcd_clear(RED);
+  mpu_memory_protection();
+  delay_init(480);
+
+  sdram_init();
+  lcd_init();
+  tp_dev.init();
+
+  /* Initial screen */
+  lcd_clear(BLUE);
+
+  /* Draw button */
+  draw_interface();
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-    /* USER CODE END WHILE */
+while (1)
+{
+    tp_dev.scan(0);
 
-    /* USER CODE BEGIN 3 */
+    if (tp_dev.sta & TP_PRES_DOWN)
+    {
+        uint16_t x = tp_dev.x[0];
+        uint16_t y = tp_dev.y[0];
 
-    /* Draw a green circle in the center of the 480x272 screen */
-    lcd_draw_circle(240, 136, 50, GREEN);
-    delay_ms(1000);
+        /* Check if touch is inside button */
+        if ((x >= BUTTON_X1) && (x <= BUTTON_X2) &&
+            (y >= BUTTON_Y1) && (y <= BUTTON_Y2))
+        {
+            change_background();
 
-    /* Toggle between red and blue background */
-    lcd_clear(WHITE);
-    delay_ms(500);
-    lcd_clear(GREEN);
-    delay_ms(500);
+            /* Wait until finger released */
+            while (tp_dev.sta & TP_PRES_DOWN)
+            {
+                tp_dev.scan(0);
+                delay_ms(10);
+            }
+        }
+    }
+}
 
-  }
   /* USER CODE END 3 */
 }
 
@@ -127,14 +197,18 @@ int main(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
+
   __disable_irq();
+
   while (1)
   {
   }
+
   /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef USE_FULL_ASSERT
+
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
@@ -145,6 +219,8 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
+
   /* USER CODE END 6 */
 }
+
 #endif /* USE_FULL_ASSERT */
