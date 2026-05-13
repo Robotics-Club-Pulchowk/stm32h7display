@@ -38,10 +38,11 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define BUTTON_X1   140
-#define BUTTON_Y1   90
-#define BUTTON_X2   340
-#define BUTTON_Y2   170
+/* Properly centered button for 480x272 display */
+#define BUTTON_X1   160
+#define BUTTON_Y1   96
+#define BUTTON_X2   320
+#define BUTTON_Y2   176
 
 /* USER CODE END PD */
 
@@ -74,14 +75,22 @@ void change_background(void);
   */
 void draw_interface(void)
 {
-    /* Draw green button */
+    /* Draw centered green button */
     lcd_fill(BUTTON_X1, BUTTON_Y1, BUTTON_X2, BUTTON_Y2, GREEN);
 
-    /* Match text background to button color */
+    /* Match text background with button */
     g_back_color = GREEN;
 
-    /* Draw text */
-    lcd_show_string(175, 115, 140, 40, 24, "CLICK ME", WHITE);
+    /* Draw centered text */
+    lcd_show_string(
+        185,
+        124,
+        120,
+        30,
+        24,
+        "CLICK ME",
+        WHITE
+    );
 }
 
 /**
@@ -146,13 +155,16 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   mpu_memory_protection();
+
   delay_init(480);
 
   sdram_init();
+
   lcd_init();
+
   tp_dev.init();
 
-  /* Initial screen */
+  /* Initial screen color */
   lcd_clear(BLUE);
 
   /* Draw button */
@@ -162,30 +174,35 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-while (1)
-{
-    tp_dev.scan(0);
 
-    if (tp_dev.sta & TP_PRES_DOWN)
-    {
-        uint16_t x = tp_dev.x[0];
-        uint16_t y = tp_dev.y[0];
+  while (1)
+  {
+      tp_dev.scan(0);
 
-        /* Check if touch is inside button */
-        if ((x >= BUTTON_X1) && (x <= BUTTON_X2) &&
-            (y >= BUTTON_Y1) && (y <= BUTTON_Y2))
-        {
-            change_background();
+      if (tp_dev.sta & TP_PRES_DOWN)
+      {
+          uint16_t x = tp_dev.x[0];
+          uint16_t y = tp_dev.y[0];
 
-            /* Wait until finger released */
-            while (tp_dev.sta & TP_PRES_DOWN)
-            {
-                tp_dev.scan(0);
-                delay_ms(10);
-            }
-        }
-    }
-}
+          /* Check if touch is inside button */
+          if ((x >= BUTTON_X1) && (x <= BUTTON_X2) &&
+              (y >= BUTTON_Y1) && (y <= BUTTON_Y2))
+          {
+              change_background();
+
+              /* Wait for touch release */
+              while (tp_dev.sta & TP_PRES_DOWN)
+              {
+                  tp_dev.scan(0);
+                  delay_ms(10);
+              }
+          }
+      }
+
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+  }
 
   /* USER CODE END 3 */
 }
