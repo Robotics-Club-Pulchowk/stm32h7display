@@ -43,6 +43,7 @@
 #define BUTTON_MARGIN    20
 #define BUTTON_FONT_SIZE 24
 #define BUTTON_COUNT     4
+#define BUTTON_INDEX_NONE 0xFF
 
 /* USER CODE END PD */
 
@@ -135,13 +136,19 @@ void draw_interface(void)
 
     for (i = 0; i < BUTTON_COUNT; i++)
     {
-        uint16_t label_len = (uint16_t)strlen(color_buttons[i].label);
-        uint16_t text_w = label_len * (BUTTON_FONT_SIZE / 2);
-        uint16_t text_h = BUTTON_FONT_SIZE;
+        uint16_t label_len;
+        uint16_t text_w;
+        uint16_t text_h;
+        uint16_t text_x;
+        uint16_t text_y;
+
+        label_len = (uint16_t)strlen(color_buttons[i].label);
+        text_w = label_len * (BUTTON_FONT_SIZE / 2);
+        text_h = BUTTON_FONT_SIZE;
         if (text_w > button_size) text_w = button_size;
         if (text_h > button_size) text_h = button_size;
-        uint16_t text_x = color_buttons[i].x1 + ((button_size - text_w) / 2);
-        uint16_t text_y = color_buttons[i].y1 + ((button_size - text_h) / 2);
+        text_x = color_buttons[i].x1 + ((button_size - text_w) / 2);
+        text_y = color_buttons[i].y1 + ((button_size - text_h) / 2);
 
         lcd_fill(
             color_buttons[i].x1,
@@ -181,7 +188,7 @@ uint8_t get_touched_button_index(uint16_t x, uint16_t y)
         }
     }
 
-    return BUTTON_COUNT;
+    return BUTTON_INDEX_NONE;
 }
 
 /* USER CODE END 0 */
@@ -244,7 +251,7 @@ int main(void)
 
           uint8_t button_index = get_touched_button_index(x, y);
 
-          if (button_index < BUTTON_COUNT)
+          if (button_index != BUTTON_INDEX_NONE)
           {
               set_background_color(color_buttons[button_index].color);
 
