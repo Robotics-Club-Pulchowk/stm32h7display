@@ -1,0 +1,23 @@
+# Build outputs
+build/
+Debug/
+Release/
+
+# Object/binary files
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+
+# Temporary/editor
+*.swp
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
