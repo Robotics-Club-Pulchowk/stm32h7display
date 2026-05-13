@@ -39,10 +39,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define BUTTON_WIDTH     160
-#define BUTTON_HEIGHT    80
-#define BUTTON_TEXT      "CLICK ME"
+#define BUTTON_GAP       24
+#define BUTTON_MARGIN    20
 #define BUTTON_FONT_SIZE 24
+#define BUTTON_COUNT     4
 
 /* USER CODE END PD */
 
@@ -55,11 +55,23 @@
 
 /* USER CODE BEGIN PV */
 
-uint8_t color_state = 0;
-uint16_t button_x1 = 0;
-uint16_t button_y1 = 0;
-uint16_t button_x2 = 0;
-uint16_t button_y2 = 0;
+typedef struct
+{
+    uint16_t x1;
+    uint16_t y1;
+    uint16_t x2;
+    uint16_t y2;
+    uint16_t color;
+    const char *label;
+} color_button_t;
+
+color_button_t color_buttons[BUTTON_COUNT] =
+{
+    {0, 0, 0, 0, RED,   "RED"},
+    {0, 0, 0, 0, GREEN, "GREEN"},
+    {0, 0, 0, 0, BLUE,  "BLUE"},
+    {0, 0, 0, 0, BLACK, "BLACK"}
+};
 
 /* USER CODE END PV */
 
@@ -67,7 +79,8 @@ uint16_t button_y2 = 0;
 /* USER CODE BEGIN PFP */
 
 void draw_interface(void);
-void change_background(void);
+void set_background_color(uint16_t color);
+uint8_t get_touched_button_index(uint16_t x, uint16_t y);
 
 /* USER CODE END PFP */
 
@@ -79,72 +92,96 @@ void change_background(void);
   */
 void draw_interface(void)
 {
-    uint16_t btn_w = BUTTON_WIDTH;
-    uint16_t btn_h = BUTTON_HEIGHT;
-    uint16_t text_len = (uint16_t)strlen(BUTTON_TEXT);
-    uint16_t text_w = text_len * (BUTTON_FONT_SIZE / 2);
-    uint16_t text_h = BUTTON_FONT_SIZE;
-    uint16_t text_x;
-    uint16_t text_y;
+    uint16_t matrix_w;
+    uint16_t matrix_h;
+    uint16_t start_x;
+    uint16_t start_y;
+    uint16_t button_size;
+    uint8_t i;
 
-    if (btn_w > lcddev.width) btn_w = lcddev.width;
-    if (btn_h > lcddev.height) btn_h = lcddev.height;
+    uint16_t max_button_w = (lcddev.width - (2 * BUTTON_MARGIN) - BUTTON_GAP) / 2;
+    uint16_t max_button_h = (lcddev.height - (2 * BUTTON_MARGIN) - BUTTON_GAP) / 2;
 
-    button_x1 = (lcddev.width - btn_w) / 2;
-    button_y1 = (lcddev.height - btn_h) / 2;
-    button_x2 = button_x1 + btn_w - 1;
-    button_y2 = button_y1 + btn_h - 1;
+    button_size = (max_button_w < max_button_h) ? max_button_w : max_button_h;
+    if (button_size == 0)
+    {
+        return;
+    }
 
-    lcd_fill(button_x1, button_y1, button_x2, button_y2, GREEN);
+    matrix_w = (2 * button_size) + BUTTON_GAP;
+    matrix_h = (2 * button_size) + BUTTON_GAP;
+    start_x = (lcddev.width - matrix_w) / 2;
+    start_y = (lcddev.height - matrix_h) / 2;
 
-    /* Match text background with button */
-    g_back_color = GREEN;
+    color_buttons[0].x1 = start_x;
+    color_buttons[0].y1 = start_y;
+    color_buttons[0].x2 = start_x + button_size - 1;
+    color_buttons[0].y2 = start_y + button_size - 1;
 
-    if (text_w > btn_w) text_w = btn_w;
-    if (text_h > btn_h) text_h = btn_h;
+    color_buttons[1].x1 = start_x + button_size + BUTTON_GAP;
+    color_buttons[1].y1 = start_y;
+    color_buttons[1].x2 = color_buttons[1].x1 + button_size - 1;
+    color_buttons[1].y2 = start_y + button_size - 1;
 
-    text_x = button_x1 + (btn_w - text_w) / 2;
-    text_y = button_y1 + (btn_h - text_h) / 2;
+    color_buttons[2].x1 = start_x;
+    color_buttons[2].y1 = start_y + button_size + BUTTON_GAP;
+    color_buttons[2].x2 = start_x + button_size - 1;
+    color_buttons[2].y2 = color_buttons[2].y1 + button_size - 1;
 
-    lcd_show_string(
-        text_x,
-        text_y,
-        text_w,
-        text_h,
-        BUTTON_FONT_SIZE,
-        BUTTON_TEXT,
-        WHITE
-    );
+    color_buttons[3].x1 = start_x + button_size + BUTTON_GAP;
+    color_buttons[3].y1 = start_y + button_size + BUTTON_GAP;
+    color_buttons[3].x2 = color_buttons[3].x1 + button_size - 1;
+    color_buttons[3].y2 = color_buttons[3].y1 + button_size - 1;
+
+    for (i = 0; i < BUTTON_COUNT; i++)
+    {
+        uint16_t label_len = (uint16_t)strlen(color_buttons[i].label);
+        uint16_t text_w = label_len * (BUTTON_FONT_SIZE / 2);
+        uint16_t text_h = BUTTON_FONT_SIZE;
+        if (text_w > button_size) text_w = button_size;
+        if (text_h > button_size) text_h = button_size;
+        uint16_t text_x = color_buttons[i].x1 + ((button_size - text_w) / 2);
+        uint16_t text_y = color_buttons[i].y1 + ((button_size - text_h) / 2);
+
+        lcd_fill(
+            color_buttons[i].x1,
+            color_buttons[i].y1,
+            color_buttons[i].x2,
+            color_buttons[i].y2,
+            color_buttons[i].color
+        );
+
+        g_back_color = color_buttons[i].color;
+        lcd_show_string(text_x, text_y, text_w, text_h, BUTTON_FONT_SIZE, color_buttons[i].label, WHITE);
+    }
 }
 
 /**
-  * @brief Change background color
+  * @brief Set screen background and redraw color buttons
   */
-void change_background(void)
+void set_background_color(uint16_t color)
 {
-    color_state++;
-
-    if (color_state >= 3)
-    {
-        color_state = 0;
-    }
-
-    switch (color_state)
-    {
-        case 0:
-            lcd_clear(BLUE);
-            break;
-
-        case 1:
-            lcd_clear(RED);
-            break;
-
-        case 2:
-            lcd_clear(BLACK);
-            break;
-    }
-
+    lcd_clear(color);
     draw_interface();
+}
+
+/**
+  * @brief Get touched button index
+  */
+uint8_t get_touched_button_index(uint16_t x, uint16_t y)
+{
+    uint8_t i;
+
+    for (i = 0; i < BUTTON_COUNT; i++)
+    {
+        if ((x >= color_buttons[i].x1) && (x <= color_buttons[i].x2) &&
+            (y >= color_buttons[i].y1) && (y <= color_buttons[i].y2))
+        {
+            return i;
+        }
+    }
+
+    return BUTTON_COUNT;
 }
 
 /* USER CODE END 0 */
@@ -189,10 +226,7 @@ int main(void)
   tp_dev.init();
 
   /* Initial screen color */
-  lcd_clear(BLUE);
-
-  /* Draw button */
-  draw_interface();
+  set_background_color(BLUE);
 
   /* USER CODE END 2 */
 
@@ -208,11 +242,11 @@ int main(void)
           uint16_t x = tp_dev.x[0];
           uint16_t y = tp_dev.y[0];
 
-          /* Check if touch is inside button */
-          if ((x >= button_x1) && (x <= button_x2) &&
-              (y >= button_y1) && (y <= button_y2))
+          uint8_t button_index = get_touched_button_index(x, y);
+
+          if (button_index < BUTTON_COUNT)
           {
-              change_background();
+              set_background_color(color_buttons[button_index].color);
 
               /* Wait for touch release */
               while (tp_dev.sta & TP_PRES_DOWN)
