@@ -29,6 +29,8 @@
 #include "mpu.h"
 #include "touch.h"
 #include <string.h>
+#include <stdio.h>
+#include "usart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,6 +57,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+static uint32_t uart_last_tick = 0;
+static uint32_t uart_counter   = 0;
 
 typedef struct
 {
@@ -230,6 +235,8 @@ int main(void)
 
   lcd_init();
 
+  usart1_init(115200);
+
   tp_dev.init();
 
   /* Initial screen color */
@@ -263,6 +270,17 @@ int main(void)
               }
           }
       }
+
+  /* Send a hello message over USART1 every 1 000 ms (non-blocking). */
+  {
+      uint32_t now = HAL_GetTick();
+      if (now - uart_last_tick >= 1000U)
+      {
+          uart_last_tick = now;
+          uart_counter++;
+          printf("STM32H7 UART Hello #%lu\n", uart_counter);
+      }
+  }
 
     /* USER CODE END WHILE */
 
