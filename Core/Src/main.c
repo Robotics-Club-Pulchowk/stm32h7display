@@ -29,6 +29,7 @@
 #include "mpu.h"
 #include "touch.h"
 #include <string.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,11 +40,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define BUTTON_GAP       24
-#define BUTTON_MARGIN    20
-#define BUTTON_FONT_SIZE 24
-#define BUTTON_COUNT     4
-#define BUTTON_INDEX_NONE 0xFF
+#define UART_BAUDRATE       115200U
+#define PROMPT_TEXT         "click anywhere"
+#define PROMPT_FONT_SIZE    32U
 
 /* USER CODE END PD */
 
@@ -56,139 +55,66 @@
 
 /* USER CODE BEGIN PV */
 
-typedef struct
-{
-    uint16_t x1;
-    uint16_t y1;
-    uint16_t x2;
-    uint16_t y2;
-    uint16_t color;
-    const char *label;
-} color_button_t;
-
-color_button_t color_buttons[BUTTON_COUNT] =
-{
-    {0, 0, 0, 0, RED,   "RED"},
-    {0, 0, 0, 0, GREEN, "GREEN"},
-    {0, 0, 0, 0, BLUE,  "BLUE"},
-    {0, 0, 0, 0, BLACK, "BLACK"}
-};
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
 
-void draw_interface(void);
-void set_background_color(uint16_t color);
-uint8_t get_touched_button_index(uint16_t x, uint16_t y);
+void uart1_init(uint32_t baudrate);
+int __io_putchar(int ch);
+int __io_getchar(void);
+void draw_touch_prompt(void);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-/**
-  * @brief Draw UI
-  */
-void draw_interface(void)
+void uart1_init(uint32_t baudrate)
 {
-    uint16_t matrix_w;
-    uint16_t matrix_h;
-    uint16_t start_x;
-    uint16_t start_y;
-    uint16_t button_size;
-    uint8_t i;
+    uint32_t usartdiv;
 
-    uint16_t max_button_w = (lcddev.width - (2 * BUTTON_MARGIN) - BUTTON_GAP) / 2;
-    uint16_t max_button_h = (lcddev.height - (2 * BUTTON_MARGIN) - BUTTON_GAP) / 2;
+    /* USART1 TX pin: PA9 (AF7) -> connect this pin to USB-UART RX */
+    RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN;
+    RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
 
-    button_size = (max_button_w < max_button_h) ? max_button_w : max_button_h;
-    if (button_size == 0)
-    {
-        return;
-    }
+    sys_gpio_set(GPIOA, SYS_GPIO_PIN9, SYS_GPIO_MODE_AF, SYS_GPIO_OTYPE_PP, SYS_GPIO_SPEED_HIGH, SYS_GPIO_PUPD_PU);
+    sys_gpio_af_set(GPIOA, SYS_GPIO_PIN9, 7);
 
-    matrix_w = (2 * button_size) + BUTTON_GAP;
-    matrix_h = (2 * button_size) + BUTTON_GAP;
-    start_x = (lcddev.width - matrix_w) / 2;
-    start_y = (lcddev.height - matrix_h) / 2;
+    USART1->CR1 = 0;
+    USART1->CR2 = 0;
+    USART1->CR3 = 0;
 
-    color_buttons[0].x1 = start_x;
-    color_buttons[0].y1 = start_y;
-    color_buttons[0].x2 = start_x + button_size - 1;
-    color_buttons[0].y2 = start_y + button_size - 1;
-
-    color_buttons[1].x1 = start_x + button_size + BUTTON_GAP;
-    color_buttons[1].y1 = start_y;
-    color_buttons[1].x2 = color_buttons[1].x1 + button_size - 1;
-    color_buttons[1].y2 = start_y + button_size - 1;
-
-    color_buttons[2].x1 = start_x;
-    color_buttons[2].y1 = start_y + button_size + BUTTON_GAP;
-    color_buttons[2].x2 = start_x + button_size - 1;
-    color_buttons[2].y2 = color_buttons[2].y1 + button_size - 1;
-
-    color_buttons[3].x1 = start_x + button_size + BUTTON_GAP;
-    color_buttons[3].y1 = start_y + button_size + BUTTON_GAP;
-    color_buttons[3].x2 = color_buttons[3].x1 + button_size - 1;
-    color_buttons[3].y2 = color_buttons[3].y1 + button_size - 1;
-
-    for (i = 0; i < BUTTON_COUNT; i++)
-    {
-        uint16_t label_len;
-        uint16_t text_w;
-        uint16_t text_h;
-        uint16_t text_x;
-        uint16_t text_y;
-
-        label_len = (uint16_t)strlen(color_buttons[i].label);
-        text_w = label_len * (BUTTON_FONT_SIZE / 2);
-        text_h = BUTTON_FONT_SIZE;
-        if (text_w > button_size) text_w = button_size;
-        if (text_h > button_size) text_h = button_size;
-        text_x = color_buttons[i].x1 + ((button_size - text_w) / 2);
-        text_y = color_buttons[i].y1 + ((button_size - text_h) / 2);
-
-        lcd_fill(
-            color_buttons[i].x1,
-            color_buttons[i].y1,
-            color_buttons[i].x2,
-            color_buttons[i].y2,
-            color_buttons[i].color
-        );
-
-        g_back_color = color_buttons[i].color;
-        lcd_show_string(text_x, text_y, text_w, text_h, BUTTON_FONT_SIZE, color_buttons[i].label, WHITE);
-    }
+    usartdiv = (HAL_RCC_GetPCLK2Freq() + (baudrate / 2U)) / baudrate;
+    USART1->BRR = usartdiv;
+    USART1->CR1 |= USART_CR1_TE;
+    USART1->CR1 |= USART_CR1_UE;
 }
 
-/**
-  * @brief Set screen background and redraw color buttons
-  */
-void set_background_color(uint16_t color)
+int __io_putchar(int ch)
 {
-    lcd_clear(color);
-    draw_interface();
-}
-
-/**
-  * @brief Get touched button index
-  */
-uint8_t get_touched_button_index(uint16_t x, uint16_t y)
-{
-    uint8_t i;
-
-    for (i = 0; i < BUTTON_COUNT; i++)
+    while ((USART1->ISR & USART_ISR_TXE_TXFNF) == 0U)
     {
-        if ((x >= color_buttons[i].x1) && (x <= color_buttons[i].x2) &&
-            (y >= color_buttons[i].y1) && (y <= color_buttons[i].y2))
-        {
-            return i;
-        }
     }
 
-    return BUTTON_INDEX_NONE;
+    USART1->TDR = (uint8_t)ch;
+    return ch;
+}
+
+int __io_getchar(void)
+{
+    return -1;
+}
+
+void draw_touch_prompt(void)
+{
+    uint16_t text_width = (uint16_t)((strlen(PROMPT_TEXT) * PROMPT_FONT_SIZE) / 2U);
+    uint16_t x = (lcddev.width > text_width) ? (uint16_t)((lcddev.width - text_width) / 2U) : 0U;
+    uint16_t y = (lcddev.height > PROMPT_FONT_SIZE) ? (uint16_t)((lcddev.height - PROMPT_FONT_SIZE) / 2U) : 0U;
+
+    lcd_clear(BLACK);
+    g_back_color = BLACK;
+    lcd_show_string(x, y, text_width, PROMPT_FONT_SIZE, PROMPT_FONT_SIZE, (char *)PROMPT_TEXT, WHITE);
 }
 
 /* USER CODE END 0 */
@@ -230,10 +156,11 @@ int main(void)
 
   lcd_init();
 
+  uart1_init(UART_BAUDRATE);
+
   tp_dev.init();
 
-  /* Initial screen color */
-  set_background_color(BLUE);
+  draw_touch_prompt();
 
   /* USER CODE END 2 */
 
@@ -249,20 +176,16 @@ int main(void)
           uint16_t x = tp_dev.x[0];
           uint16_t y = tp_dev.y[0];
 
-          uint8_t button_index = get_touched_button_index(x, y);
+          printf("touch x=%u y=%u\r\n", x, y);
 
-          if (button_index != BUTTON_INDEX_NONE)
+          while (tp_dev.sta & TP_PRES_DOWN)
           {
-              set_background_color(color_buttons[button_index].color);
-
-              /* Wait for touch release */
-              while (tp_dev.sta & TP_PRES_DOWN)
-              {
-                  tp_dev.scan(0);
-                  delay_ms(10);
-              }
+              tp_dev.scan(0);
+              delay_ms(10);
           }
       }
+
+      delay_ms(10);
 
     /* USER CODE END WHILE */
 
