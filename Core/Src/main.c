@@ -109,14 +109,13 @@ int __io_getchar(void)
 
 void draw_touch_prompt(void)
 {
-    char prompt_text[] = PROMPT_TEXT;
-    uint16_t text_width = (uint16_t)((strlen(prompt_text) * PROMPT_FONT_SIZE) / FONT_WIDTH_DIVISOR);
+    uint16_t text_width = (strlen(PROMPT_TEXT) * PROMPT_FONT_SIZE) / FONT_WIDTH_DIVISOR;
     uint16_t x = (lcddev.width > text_width) ? (uint16_t)((lcddev.width - text_width) / 2U) : 0U;
     uint16_t y = (lcddev.height > PROMPT_FONT_SIZE) ? (uint16_t)((lcddev.height - PROMPT_FONT_SIZE) / 2U) : 0U;
 
     lcd_clear(BLACK);
     g_back_color = BLACK;
-    lcd_show_string(x, y, text_width, PROMPT_FONT_SIZE, PROMPT_FONT_SIZE, prompt_text, WHITE);
+    lcd_show_string(x, y, text_width, PROMPT_FONT_SIZE, PROMPT_FONT_SIZE, PROMPT_TEXT, WHITE);
 }
 
 /* USER CODE END 0 */
