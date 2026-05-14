@@ -69,7 +69,8 @@ BSP/TOUCH/ctiic.c \
 BSP/TOUCH/gt9xxx.c \
 BSP/TOUCH/touch.c \
 BSP/SYSTEM/delay/delay.c \
-BSP/SYSTEM/sys.c 
+BSP/SYSTEM/sys.c \
+BSP/SYSTEM/usart/usart.c
 
 
 # ASM sources
@@ -142,7 +143,8 @@ C_INCLUDES =  \
 -IBSP/MPU \
 -IBSP/TOUCH \
 -IBSP/SYSTEM/delay \
--IBSP/SYSTEM 
+-IBSP/SYSTEM \
+-IBSP/SYSTEM/usart
 
 
 # compile gcc flags
