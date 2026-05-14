@@ -44,6 +44,7 @@
 #define PROMPT_TEXT         "click anywhere"
 #define PROMPT_FONT_SIZE    32U
 #define FONT_WIDTH_DIVISOR  2U
+/* Busy-wait limit for TXE polling to avoid indefinite hang if UART misconfigures */
 #define UART_TX_TIMEOUT     0x1FFFFFU
 
 /* USER CODE END PD */
@@ -101,7 +102,7 @@ int __io_putchar(int ch)
     {
         if (timeout == 0U)
         {
-            return ch;
+            return -1;
         }
         timeout--;
     }
@@ -117,6 +118,7 @@ int __io_getchar(void)
 
 void draw_touch_prompt(void)
 {
+    /* PROMPT_TEXT must remain a string literal for sizeof(...)-1 length calculation */
     uint16_t text_width = (((sizeof(PROMPT_TEXT) - 1U) * PROMPT_FONT_SIZE) / FONT_WIDTH_DIVISOR);
     uint16_t x = (lcddev.width > text_width) ? (uint16_t)((lcddev.width - text_width) / 2U) : 0U;
     uint16_t y = (lcddev.height > PROMPT_FONT_SIZE) ? (uint16_t)((lcddev.height - PROMPT_FONT_SIZE) / 2U) : 0U;
