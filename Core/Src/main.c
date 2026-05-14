@@ -44,6 +44,7 @@
 #define PROMPT_TEXT         "click anywhere"
 #define PROMPT_FONT_SIZE    32U
 #define FONT_WIDTH_DIVISOR  2U
+#define UART_TX_TIMEOUT     0x1FFFFFU
 
 /* USER CODE END PD */
 
@@ -94,8 +95,15 @@ void uart1_init(uint32_t baudrate)
 
 int __io_putchar(int ch)
 {
+    uint32_t timeout = UART_TX_TIMEOUT;
+
     while ((USART1->ISR & USART_ISR_TXE_TXFNF) == 0U)
     {
+        if (timeout == 0U)
+        {
+            return ch;
+        }
+        timeout--;
     }
 
     USART1->TDR = (uint8_t)ch;
@@ -109,7 +117,7 @@ int __io_getchar(void)
 
 void draw_touch_prompt(void)
 {
-    uint16_t text_width = (strlen(PROMPT_TEXT) * PROMPT_FONT_SIZE) / FONT_WIDTH_DIVISOR;
+    uint16_t text_width = (((sizeof(PROMPT_TEXT) - 1U) * PROMPT_FONT_SIZE) / FONT_WIDTH_DIVISOR);
     uint16_t x = (lcddev.width > text_width) ? (uint16_t)((lcddev.width - text_width) / 2U) : 0U;
     uint16_t y = (lcddev.height > PROMPT_FONT_SIZE) ? (uint16_t)((lcddev.height - PROMPT_FONT_SIZE) / 2U) : 0U;
 
