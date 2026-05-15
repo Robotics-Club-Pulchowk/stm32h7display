@@ -83,5 +83,5 @@ Build command is:
 make
 ```
 
-In this current sandbox run, build could not complete due missing toolchain binary:
+In this current sandbox run, build could not complete due to missing toolchain binary:
 `arm-none-eabi-gcc: not found`.
