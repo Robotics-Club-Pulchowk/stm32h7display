@@ -4,8 +4,8 @@
  * @brief       USART1 driver using direct register access (no HAL UART module required).
  *
  *              Pin mapping:
- *                PA9  → USART1_TX  (AF7, push-pull, high speed, pull-up)
- *                PA10 → USART1_RX  (AF7, push-pull, high speed, pull-up)
+ *                PB6 → USART1_TX  (AF7, push-pull, high speed, pull-up)
+ *                PB7 → USART1_RX  (AF7, push-pull, high speed, pull-up)
  *
  *              Clock source:
  *                USART1 lives on APB2 (rcc_pclk2).
@@ -25,21 +25,21 @@
 
 void usart1_init(uint32_t baud)
 {
-    /* 1. Enable GPIOA peripheral clock */
-    RCC->AHB4ENR |= (1U << 0);
+    /* 1. Enable GPIOB peripheral clock */
+    RCC->AHB4ENR |= (1U << 1);
     __DSB();    /* short barrier – let the clock enable settle before GPIO access */
 
-    /* 2. PA9 → USART1_TX : alternate-function, push-pull, high speed, pull-up */
-    sys_gpio_set(GPIOA, SYS_GPIO_PIN9,
+    /* 2. PB6 → USART1_TX : alternate-function, push-pull, high speed, pull-up */
+    sys_gpio_set(GPIOB, SYS_GPIO_PIN6,
                  SYS_GPIO_MODE_AF, SYS_GPIO_OTYPE_PP,
                  SYS_GPIO_SPEED_HIGH, SYS_GPIO_PUPD_PU);
-    sys_gpio_af_set(GPIOA, SYS_GPIO_PIN9, 7);   /* AF7 = USART1 */
+    sys_gpio_af_set(GPIOB, SYS_GPIO_PIN6, 7);   /* AF7 = USART1 */
 
-    /* 3. PA10 → USART1_RX : alternate-function, push-pull, high speed, pull-up */
-    sys_gpio_set(GPIOA, SYS_GPIO_PIN10,
+    /* 3. PB7 → USART1_RX : alternate-function, push-pull, high speed, pull-up */
+    sys_gpio_set(GPIOB, SYS_GPIO_PIN7,
                  SYS_GPIO_MODE_AF, SYS_GPIO_OTYPE_PP,
                  SYS_GPIO_SPEED_HIGH, SYS_GPIO_PUPD_PU);
-    sys_gpio_af_set(GPIOA, SYS_GPIO_PIN10, 7);  /* AF7 = USART1 */
+    sys_gpio_af_set(GPIOB, SYS_GPIO_PIN7, 7);  /* AF7 = USART1 */
 
     /* 4. Enable USART1 peripheral clock (APB2, bit 4) */
     RCC->APB2ENR |= (1U << 4);
