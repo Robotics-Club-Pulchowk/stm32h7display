@@ -274,7 +274,7 @@ int main(void)
 
       if (g_uart_tx_ready && ((now - last_uart_tick) >= 1000U))
       {
-          if (HAL_UART_Transmit_DMA(&huart1, (uint8_t *)g_uart_heartbeat, sizeof(g_uart_heartbeat) - 1U) == HAL_OK)
+          if (HAL_UART_Transmit_DMA(&huart1, g_uart_heartbeat, sizeof(g_uart_heartbeat) - 1U) == HAL_OK)
           {
               g_uart_tx_ready = 0;
               last_uart_tick = now;
