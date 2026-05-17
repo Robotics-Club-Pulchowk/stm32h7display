@@ -137,7 +137,6 @@ void delay_init(uint16_t sysclk)
     SysTick->CTRL |= 1 << 0;                   /* ʹ��SysTick */
     reload = hclk_hz / 1000U;                  /* 1ms tick */
     SysTick->LOAD = reload - 1U;               /* SysTick N-cycle period requires LOAD = N-1 */
-    SysTick->CTRL |= 1 << 1;                   /* Enable SysTick interrupt for HAL_IncTick */
 #if SYS_SUPPORT_OS                             /* �����Ҫ֧��OS */
     os_reload = sysclk;                        /* ÿ���ӵļ������� ��λΪM */
     os_reload *= 1000000 / delay_ostickspersec;/* ����delay_ostickspersec�趨���ʱ��
@@ -146,6 +145,7 @@ void delay_init(uint16_t sysclk)
     g_fac_ms = 1000 / delay_ostickspersec;     /* ����OS������ʱ�����ٵ�λ */
     SysTick->LOAD = os_reload - 1U;            /* SysTick N-cycle period requires LOAD = N-1 */
 #endif
+    SysTick->CTRL |= 1 << 1;                   /* Enable SysTick interrupt after final LOAD setup */
 }
 
 /**

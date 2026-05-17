@@ -166,6 +166,7 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
             chunk_len = USART1_DMA_TX_BUF_SIZE;
         }
 
+        /* HAL API takes non-const pointer, but TX path does not mutate source data. */
         (void)HAL_UART_Transmit(&huart1, (uint8_t *)data, chunk_len, HAL_MAX_DELAY);
 
         data += chunk_len;
