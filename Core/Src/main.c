@@ -244,11 +244,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t last_uart_tick = HAL_GetTick();
 
   while (1)
   {
       uint32_t now = HAL_GetTick();
-      static uint32_t last_uart_tick = 0;
 
       tp_dev.scan(0);
 
