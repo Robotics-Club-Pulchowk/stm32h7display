@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "gpio.h"
+#include "usart.h"
 
 /* USER CODE BEGIN Includes */
 #include "sys.h"
@@ -73,6 +74,9 @@ color_button_t color_buttons[BUTTON_COUNT] =
     {0, 0, 0, 0, BLUE,  "BLUE"},
     {0, 0, 0, 0, BLACK, "BLACK"}
 };
+
+static volatile uint8_t g_uart_tx_ready = 1;
+static const uint8_t g_uart_heartbeat[] = "UART DMA heartbeat\r\n";
 
 /* USER CODE END PV */
 
@@ -219,6 +223,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
 
@@ -242,6 +247,9 @@ int main(void)
 
   while (1)
   {
+      uint32_t now = HAL_GetTick();
+      static uint32_t last_uart_tick = 0;
+
       tp_dev.scan(0);
 
       if (tp_dev.sta & TP_PRES_DOWN)
@@ -264,12 +272,29 @@ int main(void)
           }
       }
 
+      if (g_uart_tx_ready && ((now - last_uart_tick) >= 1000U))
+      {
+          if (HAL_UART_Transmit_DMA(&huart1, (uint8_t *)g_uart_heartbeat, sizeof(g_uart_heartbeat) - 1U) == HAL_OK)
+          {
+              g_uart_tx_ready = 0;
+              last_uart_tick = now;
+          }
+      }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
 
   /* USER CODE END 3 */
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)
+    {
+        g_uart_tx_ready = 1;
+    }
 }
 
 /**
