@@ -1,118 +1,159 @@
 /**
  ****************************************************************************************************
  * @file        usart.c
- * @brief       USART1 driver using direct register access (no HAL UART module required).
- *
- *              Pin mapping:
- *                PB6 → USART1_TX  (AF7, push-pull, high speed, pull-up)
- *                PB7 → USART1_RX  (AF7, push-pull, high speed, pull-up)
- *
- *              Clock source:
- *                USART1 lives on APB2 (rcc_pclk2).
- *                After sys_stm32_clock_init(192, 5, 2, 4):
- *                  HCLK  = 240 MHz, APB2 = HCLK/2 = 120 MHz  ← used for BRR calculation.
+ * @brief       USART1 driver with DMA TX.
  ****************************************************************************************************
  */
 
 #include "usart.h"
-#include "sys.h"
+#include "string.h"
 
-/* USART1 kernel clock = rcc_pclk2 = APB2 = 120 MHz                          */
-/* (D2PPRE2[2:0] = 4 → /2 divider, set in sys_clock_set inside sys.c)        */
-#define USART1_CLK_HZ   120000000UL
+UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_tx;
 
-/* -------------------------------------------------------------------------- */
+static volatile uint8_t g_usart1_tx_busy = 0U;
+static uint8_t g_usart1_tx_buf[256];
 
 void usart1_init(uint32_t baud)
 {
-    /* 1. Enable GPIOB peripheral clock */
-    RCC->AHB4ENR |= (1U << 1);
-    __DSB();    /* short barrier – let the clock enable settle before GPIO access */
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    /* 2. PB6 → USART1_TX : alternate-function, push-pull, high speed, pull-up */
-    sys_gpio_set(GPIOB, SYS_GPIO_PIN6,
-                 SYS_GPIO_MODE_AF, SYS_GPIO_OTYPE_PP,
-                 SYS_GPIO_SPEED_HIGH, SYS_GPIO_PUPD_PU);
-    sys_gpio_af_set(GPIOB, SYS_GPIO_PIN6, 7);   /* AF7 = USART1 */
+    if (baud == 0U)
+    {
+        return;
+    }
 
-    /* 3. PB7 → USART1_RX : alternate-function, push-pull, high speed, pull-up */
-    sys_gpio_set(GPIOB, SYS_GPIO_PIN7,
-                 SYS_GPIO_MODE_AF, SYS_GPIO_OTYPE_PP,
-                 SYS_GPIO_SPEED_HIGH, SYS_GPIO_PUPD_PU);
-    sys_gpio_af_set(GPIOB, SYS_GPIO_PIN7, 7);  /* AF7 = USART1 */
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    __HAL_RCC_USART1_CLK_ENABLE();
 
-    /* 4. Enable USART1 peripheral clock (APB2, bit 4) */
-    RCC->APB2ENR |= (1U << 4);
-    __DSB();
+    GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /* 5. Reset all USART1 configuration registers */
-    USART1->CR1 = 0;
-    USART1->CR2 = 0;
-    USART1->CR3 = 0;
+    huart1.Instance = USART1;
+    huart1.Init.BaudRate = (int32_t)baud;
+    huart1.Init.WordLength = UART_WORDLENGTH_8B;
+    huart1.Init.StopBits = UART_STOPBITS_1;
+    huart1.Init.Parity = UART_PARITY_NONE;
+    huart1.Init.Mode = UART_MODE_TX_RX;
+    huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+    huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+    huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+    huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+    huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
 
-    /* 6. Baud-rate register (OVER8=0 → 16× oversampling):
-     *      BRR = fclk / baud_rate  (rounded to nearest integer)
-     *      Caller must pass a non-zero baud rate.                            */
-    if (baud == 0U) { return; }
-    USART1->BRR = (uint32_t)((USART1_CLK_HZ + baud / 2U) / baud);
+    if (HAL_UART_Init(&huart1) != HAL_OK)
+    {
+        Error_Handler();
+    }
 
-    /* 7. Enable transmitter (TE), receiver (RE), and the USART itself (UE).
-     *    Frame format defaults: 8 data bits, 1 stop bit, no parity (8N1).    */
-    USART1->CR1 = (1U << 3)   /* TE  – transmitter enable  */
-                | (1U << 2)   /* RE  – receiver enable     */
-                | (1U << 0);  /* UE  – USART enable        */
+    if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+    {
+        Error_Handler();
+    }
+    if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    hdma_usart1_tx.Instance = DMA1_Stream0;
+    hdma_usart1_tx.Init.Request = DMA_REQUEST_USART1_TX;
+    hdma_usart1_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_usart1_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_usart1_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_usart1_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart1_tx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_usart1_tx.Init.Mode = DMA_NORMAL;
+    hdma_usart1_tx.Init.Priority = DMA_PRIORITY_LOW;
+    hdma_usart1_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+
+    if (HAL_DMA_Init(&hdma_usart1_tx) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    __HAL_LINKDMA(&huart1, hdmatx, hdma_usart1_tx);
+
+    HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+    HAL_NVIC_SetPriority(USART1_IRQn, 5, 1);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
 }
-
-/* -------------------------------------------------------------------------- */
 
 void usart1_send_char(char c)
 {
-    /* Wait until the transmit data register is empty (ISR bit 7 = TXE) */
-    while (!(USART1->ISR & (1U << 7)));
-    USART1->TDR = (uint8_t)c;
+    usart1_send_bytes((const uint8_t *)&c, 1U);
 }
-
-/* -------------------------------------------------------------------------- */
 
 void usart1_send_string(const char *str)
 {
-    while (*str)
-    {
-        usart1_send_char(*str++);
-    }
+    usart1_send_bytes((const uint8_t *)str, (uint16_t)strlen(str));
 }
 
-/* -------------------------------------------------------------------------- */
+void usart1_send_bytes(const uint8_t *data, uint16_t len)
+{
+    if ((data == NULL) || (len == 0U))
+    {
+        return;
+    }
+
+    while (g_usart1_tx_busy != 0U)
+    {
+    }
+
+    if (len <= sizeof(g_usart1_tx_buf))
+    {
+        memcpy(g_usart1_tx_buf, data, len);
+        g_usart1_tx_busy = 1U;
+
+        if (HAL_UART_Transmit_DMA(&huart1, g_usart1_tx_buf, len) == HAL_OK)
+        {
+            return;
+        }
+
+        g_usart1_tx_busy = 0U;
+    }
+
+    (void)HAL_UART_Transmit(&huart1, (uint8_t *)data, len, HAL_MAX_DELAY);
+}
 
 int usart1_recv_ready(void)
 {
-    /* RXNE (ISR bit 5) is set when a byte is waiting in the receive register */
-    return (USART1->ISR & (1U << 5)) ? 1 : 0;
+    return (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE_RXFNE) != RESET) ? 1 : 0;
 }
-
-/* -------------------------------------------------------------------------- */
 
 char usart1_recv_char(void)
 {
-    /* Wait until a byte has been received (RXNE) */
-    while (!(USART1->ISR & (1U << 5)));
-    return (char)(USART1->RDR & 0xFFU);
+    uint8_t ch = 0;
+    (void)HAL_UART_Receive(&huart1, &ch, 1, HAL_MAX_DELAY);
+    return (char)ch;
 }
 
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief  Retarget printf / puts / putchar to USART1.
- *         syscalls.c declares __io_putchar as a weak symbol and calls it from
- *         the _write() syscall, so defining it here is all that is needed.
- */
 int __io_putchar(int ch)
 {
-    /* Translate bare '\n' into '\r\n' so terminal emulators show line breaks */
-    if (ch == '\n')
+    uint8_t c = (uint8_t)ch;
+    if (c == '\n')
     {
-        usart1_send_char('\r');
+        const uint8_t cr = '\r';
+        usart1_send_bytes(&cr, 1U);
     }
-    usart1_send_char((char)ch);
+    usart1_send_bytes(&c, 1U);
     return ch;
 }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)
+    {
+        g_usart1_tx_busy = 0U;
+    }
+}
+

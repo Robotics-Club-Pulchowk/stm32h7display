@@ -1,29 +1,18 @@
 /**
  ****************************************************************************************************
  * @file        usart.h
- * @brief       USART1 driver using direct register access (no HAL UART module required).
- *              USART1 TX: PB6 (AF7)
- *              USART1 RX: PB7 (AF7)
- *
- *              Use an external 3.3V USB-to-TTL adapter on these header pins for runtime
- *              UART debugging.
- *
- *              IMPORTANT – "display turns off when opening minicom/picocom":
- *              Many STM32 development boards wire the USB-UART bridge's DTR output to
- *              the MCU's NRST pin so that IDEs can trigger a reset for firmware upload.
- *              When a terminal emulator opens the port it briefly toggles DTR, which
- *              resets the MCU and the display goes blank until the firmware restarts.
- *              Fix: open the port with DTR/RTS disabled:
- *                  picocom -b 115200 --noreset /dev/ttyUSB0
- *              or in minicom: Serial port setup → Hardware Flow Control → No.
+ * @brief       USART1 driver (PB6/PB7, AF7) with DMA TX support.
  ****************************************************************************************************
  */
 
 #ifndef __USART_H
 #define __USART_H
 
-#include "stm32h7xx.h"
+#include "stm32h7xx_hal.h"
 #include <stdint.h>
+
+extern UART_HandleTypeDef huart1;
+extern DMA_HandleTypeDef hdma_usart1_tx;
 
 /**
  * @brief  Initialise USART1 at the given baud rate (8N1, no hardware flow control).
@@ -41,6 +30,7 @@ void usart1_send_char(char c);
  * @brief  Transmit a null-terminated string.
  */
 void usart1_send_string(const char *str);
+void usart1_send_bytes(const uint8_t *data, uint16_t len);
 
 /**
  * @brief  Returns non-zero when a received byte is waiting in the RX register.
