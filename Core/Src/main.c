@@ -274,9 +274,9 @@ int main(void)
   /* Send a hello message over USART1 every 1 000 ms (non-blocking). */
   {
       uint32_t now = HAL_GetTick();
-      if (now - uart_last_tick >= 1000U)
+      while ((now - uart_last_tick) >= 1000U)
       {
-          uart_last_tick = now;
+          uart_last_tick += 1000U;
           uart_counter++;
           printf("STM32H7 UART Hello #%lu\n", uart_counter);
       }

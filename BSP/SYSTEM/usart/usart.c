@@ -6,6 +6,7 @@
  */
 
 #include "usart.h"
+#include "main.h"
 #include "string.h"
 
 UART_HandleTypeDef huart1;
@@ -176,7 +177,7 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
 
 int usart1_recv_ready(void)
 {
-    return (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE_RXFNE) != RESET) ? 1 : 0;
+    return (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE) != RESET) ? 1 : 0;
 }
 
 char usart1_recv_char(void)
