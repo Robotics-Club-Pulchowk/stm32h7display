@@ -135,7 +135,6 @@ void delay_init(uint16_t sysclk)
                                                  * reloadΪ24λ�Ĵ���,���ֵ:16777216
                                                  */
     g_fac_ms = 1000 / delay_ostickspersec;     /* ����OS������ʱ�����ٵ�λ */
-    SysTick->CTRL |= 1 << 1;                   /* ����SYSTICK�ж� */
     SysTick->LOAD = os_reload;                 /* ÿ1/delay_ostickspersec���ж�һ�� */
 #endif
 }
