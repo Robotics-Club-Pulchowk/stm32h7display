@@ -127,7 +127,7 @@ void delay_init(uint16_t sysclk)
     }
     SysTick->CTRL |= 1 << 0;                   /* ʹ��SysTick */
     reload = hclk_hz / 1000U;                  /* 1ms tick */
-    SysTick->LOAD = reload - 1U;               /* 1ms reload, keeps HAL_GetTick working */
+    SysTick->LOAD = reload - 1U;               /* SysTick N-cycle period requires LOAD = N-1 */
     SysTick->CTRL |= 1 << 1;                   /* Enable SysTick interrupt for HAL_IncTick */
 #if SYS_SUPPORT_OS                             /* �����Ҫ֧��OS */
     os_reload = sysclk;                        /* ÿ���ӵļ������� ��λΪM */
