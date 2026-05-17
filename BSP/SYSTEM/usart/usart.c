@@ -11,8 +11,11 @@
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 
+#define USART1_DMA_TX_BUF_SIZE        256U
+#define USART1_DMA_WAIT_TIMEOUT_MS    100U
+
 static volatile uint8_t g_usart1_tx_busy = 0U;
-static uint8_t g_usart1_tx_buf[256];
+static uint8_t g_usart1_tx_buf[USART1_DMA_TX_BUF_SIZE];
 
 void usart1_init(uint32_t baud)
 {
@@ -35,7 +38,7 @@ void usart1_init(uint32_t baud)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
     huart1.Instance = USART1;
-    huart1.Init.BaudRate = (int32_t)baud;
+    huart1.Init.BaudRate = baud;
     huart1.Init.WordLength = UART_WORDLENGTH_8B;
     huart1.Init.StopBits = UART_STOPBITS_1;
     huart1.Init.Parity = UART_PARITY_NONE;
@@ -100,16 +103,25 @@ void usart1_send_string(const char *str)
 
 void usart1_send_bytes(const uint8_t *data, uint16_t len)
 {
+    uint32_t tickstart;
+
     if ((data == NULL) || (len == 0U))
     {
         return;
     }
 
+    tickstart = HAL_GetTick();
     while (g_usart1_tx_busy != 0U)
     {
+        if ((HAL_GetTick() - tickstart) > USART1_DMA_WAIT_TIMEOUT_MS)
+        {
+            (void)HAL_UART_AbortTransmit(&huart1);
+            g_usart1_tx_busy = 0U;
+            break;
+        }
     }
 
-    if (len <= sizeof(g_usart1_tx_buf))
+    if (len <= USART1_DMA_TX_BUF_SIZE)
     {
         memcpy(g_usart1_tx_buf, data, len);
         g_usart1_tx_busy = 1U;
@@ -122,7 +134,20 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
         g_usart1_tx_busy = 0U;
     }
 
-    (void)HAL_UART_Transmit(&huart1, (uint8_t *)data, len, HAL_MAX_DELAY);
+    while (len > 0U)
+    {
+        uint16_t chunk_len = len;
+        if (chunk_len > USART1_DMA_TX_BUF_SIZE)
+        {
+            chunk_len = USART1_DMA_TX_BUF_SIZE;
+        }
+
+        memcpy(g_usart1_tx_buf, data, chunk_len);
+        (void)HAL_UART_Transmit(&huart1, g_usart1_tx_buf, chunk_len, HAL_MAX_DELAY);
+
+        data += chunk_len;
+        len -= chunk_len;
+    }
 }
 
 int usart1_recv_ready(void)
@@ -156,4 +181,3 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
         g_usart1_tx_busy = 0U;
     }
 }
-
