@@ -2,11 +2,11 @@
  ****************************************************************************************************
  * @file        usart.h
  * @brief       USART1 driver using direct register access (no HAL UART module required).
- *              USART1 TX: PA9  (AF7)
- *              USART1 RX: PA10 (AF7)
+ *              USART1 TX: PB6 (AF7)
+ *              USART1 RX: PB7 (AF7)
  *
- *              These pins are typically routed to the on-board USB-to-UART bridge chip
- *              (e.g. CH340, CP2102) connected to one of the USB-C connectors.
+ *              Use an external 3.3V USB-to-TTL adapter on these header pins for runtime
+ *              UART debugging.
  *
  *              IMPORTANT – "display turns off when opening minicom/picocom":
  *              Many STM32 development boards wire the USB-UART bridge's DTR output to
