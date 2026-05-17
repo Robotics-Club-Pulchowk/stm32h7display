@@ -103,6 +103,8 @@ void usart1_send_string(const char *str)
 
 void usart1_send_bytes(const uint8_t *data, uint16_t len)
 {
+    HAL_StatusTypeDef dma_status;
+    uint8_t blocking_tx_buf[64];
     uint32_t tickstart;
 
     if ((data == NULL) || (len == 0U))
@@ -113,7 +115,7 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
     tickstart = HAL_GetTick();
     while (g_usart1_tx_busy != 0U)
     {
-        if ((HAL_GetTick() - tickstart) > USART1_DMA_WAIT_TIMEOUT_MS)
+        if ((HAL_GetTick() - tickstart) >= USART1_DMA_WAIT_TIMEOUT_MS)
         {
             (void)HAL_UART_AbortTransmit(&huart1);
             g_usart1_tx_busy = 0U;
@@ -126,7 +128,8 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
         memcpy(g_usart1_tx_buf, data, len);
         g_usart1_tx_busy = 1U;
 
-        if (HAL_UART_Transmit_DMA(&huart1, g_usart1_tx_buf, len) == HAL_OK)
+        dma_status = HAL_UART_Transmit_DMA(&huart1, g_usart1_tx_buf, len);
+        if (dma_status == HAL_OK)
         {
             return;
         }
@@ -137,13 +140,13 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
     while (len > 0U)
     {
         uint16_t chunk_len = len;
-        if (chunk_len > USART1_DMA_TX_BUF_SIZE)
+        if (chunk_len > sizeof(blocking_tx_buf))
         {
-            chunk_len = USART1_DMA_TX_BUF_SIZE;
+            chunk_len = sizeof(blocking_tx_buf);
         }
 
-        memcpy(g_usart1_tx_buf, data, chunk_len);
-        (void)HAL_UART_Transmit(&huart1, g_usart1_tx_buf, chunk_len, HAL_MAX_DELAY);
+        memcpy(blocking_tx_buf, data, chunk_len);
+        (void)HAL_UART_Transmit(&huart1, blocking_tx_buf, chunk_len, HAL_MAX_DELAY);
 
         data += chunk_len;
         len -= chunk_len;

@@ -17,6 +17,7 @@
 
 #include "sys.h"
 #include "delay.h"
+#include "stm32h7xx_hal.h"
 
 
 static uint32_t g_fac_us = 0;       /* us��ʱ������ */
@@ -103,6 +104,7 @@ void SysTick_Handler(void)
 void delay_init(uint16_t sysclk)
 {
     uint32_t reload;
+    uint32_t hclk_hz;
 #if SYS_SUPPORT_OS                             /* �����Ҫ֧��OS. */
     uint32_t os_reload;
 #endif
@@ -111,14 +113,20 @@ void delay_init(uint16_t sysclk)
         return;
     }
 
-    SysTick->CTRL |= (1 << 2);                 /* SYSTICKʹ��ϵͳʱ��Դ,Ƶ��ΪHCLK */
-    g_fac_us = sysclk;                         /* �����Ƿ�ʹ��OS,g_fac_us����Ҫʹ��,��Ϊ1us�Ļ���ʱ�� */
-    SysTick->CTRL |= 1 << 0;                   /* ʹ��SysTick */
-    reload = (uint32_t)sysclk * 1000U;
-    if (reload > 0x1000000U)                   /* 24-bit SysTick max reload + 1 */
+    hclk_hz = HAL_RCC_GetHCLKFreq();
+    if (hclk_hz == 0U)
     {
-        reload = 0x1000000U;
+        hclk_hz = (uint32_t)sysclk * 1000000U; /* fallback when HAL clock query is unavailable */
     }
+
+    SysTick->CTRL |= (1 << 2);                 /* SYSTICKʹ��ϵͳʱ��Դ,Ƶ��ΪHCLK */
+    g_fac_us = hclk_hz / 1000000U;             /* 1us ticks derived from real HCLK */
+    if (g_fac_us == 0U)
+    {
+        g_fac_us = 1U;
+    }
+    SysTick->CTRL |= 1 << 0;                   /* ʹ��SysTick */
+    reload = hclk_hz / 1000U;                  /* 1ms tick */
     SysTick->LOAD = reload - 1U;               /* 1ms reload, keeps HAL_GetTick working */
     SysTick->CTRL |= 1 << 1;                   /* Enable SysTick interrupt for HAL_IncTick */
 #if SYS_SUPPORT_OS                             /* �����Ҫ֧��OS */
