@@ -12,12 +12,10 @@ UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 
 #define USART1_DMA_TX_BUF_SIZE        256U
-#define USART1_BLOCKING_TX_BUF_SIZE   64U
 #define USART1_DMA_WAIT_TIMEOUT_MS    100U
 
 static volatile uint8_t g_usart1_tx_busy = 0U;
 static uint8_t g_usart1_tx_buf[USART1_DMA_TX_BUF_SIZE];
-static uint8_t g_usart1_blocking_tx_buf[USART1_BLOCKING_TX_BUF_SIZE];
 
 static uint8_t usart1_tx_is_busy(void)
 {
@@ -116,7 +114,8 @@ void usart1_send_string(const char *str)
 void usart1_send_bytes(const uint8_t *data, uint16_t len)
 {
     HAL_StatusTypeDef dma_status;
-    uint32_t tickstart;
+    uint32_t primask;
+    uint32_t tickstart, deadline;
 
     if ((data == NULL) || (len == 0U))
     {
@@ -124,9 +123,10 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
     }
 
     tickstart = HAL_GetTick();
+    deadline = tickstart + USART1_DMA_WAIT_TIMEOUT_MS;
     while (usart1_tx_is_busy() != 0U)
     {
-        if ((HAL_GetTick() - tickstart) >= USART1_DMA_WAIT_TIMEOUT_MS)
+        if ((int32_t)(HAL_GetTick() - deadline) >= 0)
         {
             (void)HAL_UART_AbortTransmit(&huart1);
             g_usart1_tx_busy = 0U;
@@ -140,10 +140,16 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
 
     if (len <= USART1_DMA_TX_BUF_SIZE)
     {
+        primask = __get_PRIMASK();
+        __disable_irq();
         memcpy(g_usart1_tx_buf, data, len);
         g_usart1_tx_busy = 1U;
-
         dma_status = HAL_UART_Transmit_DMA(&huart1, g_usart1_tx_buf, len);
+        if (primask == 0U)
+        {
+            __enable_irq();
+        }
+
         if (dma_status == HAL_OK)
         {
             return;
@@ -155,13 +161,12 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
     while (len > 0U)
     {
         uint16_t chunk_len = len;
-        if (chunk_len > USART1_BLOCKING_TX_BUF_SIZE)
+        if (chunk_len > USART1_DMA_TX_BUF_SIZE)
         {
-            chunk_len = USART1_BLOCKING_TX_BUF_SIZE;
+            chunk_len = USART1_DMA_TX_BUF_SIZE;
         }
 
-        memcpy(g_usart1_blocking_tx_buf, data, chunk_len);
-        (void)HAL_UART_Transmit(&huart1, g_usart1_blocking_tx_buf, chunk_len, HAL_MAX_DELAY);
+        (void)HAL_UART_Transmit(&huart1, (uint8_t *)data, chunk_len, HAL_MAX_DELAY);
 
         data += chunk_len;
         len -= chunk_len;

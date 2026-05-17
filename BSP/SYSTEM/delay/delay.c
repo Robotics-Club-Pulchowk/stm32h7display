@@ -104,6 +104,7 @@ void SysTick_Handler(void)
 void delay_init(uint16_t sysclk)
 {
     uint32_t reload;
+    uint64_t hclk_hz_fallback;
     uint32_t hclk_hz;
 #if SYS_SUPPORT_OS                             /* �����Ҫ֧��OS. */
     uint32_t os_reload;
@@ -116,7 +117,15 @@ void delay_init(uint16_t sysclk)
     hclk_hz = HAL_RCC_GetHCLKFreq();
     if (hclk_hz == 0U)
     {
-        hclk_hz = (uint32_t)sysclk * 1000000U; /* fallback when HAL clock query is unavailable */
+        hclk_hz_fallback = (uint64_t)sysclk * 1000000ULL; /* fallback when HAL clock query is unavailable */
+        if (hclk_hz_fallback > 0xFFFFFFFFULL)
+        {
+            hclk_hz = 480000000U;
+        }
+        else
+        {
+            hclk_hz = (uint32_t)hclk_hz_fallback;
+        }
     }
 
     SysTick->CTRL |= (1 << 2);                 /* SYSTICKʹ��ϵͳʱ��Դ,Ƶ��ΪHCLK */
@@ -135,7 +144,7 @@ void delay_init(uint16_t sysclk)
                                                  * reloadΪ24λ�Ĵ���,���ֵ:16777216
                                                  */
     g_fac_ms = 1000 / delay_ostickspersec;     /* ����OS������ʱ�����ٵ�λ */
-    SysTick->LOAD = os_reload;                 /* ÿ1/delay_ostickspersec���ж�һ�� */
+    SysTick->LOAD = os_reload - 1U;            /* SysTick N-cycle period requires LOAD = N-1 */
 #endif
 }
 
