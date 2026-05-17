@@ -276,7 +276,7 @@ int main(void)
       uint32_t now = HAL_GetTick();
       if ((now - uart_last_tick) >= 1000U)
       {
-          uart_last_tick += 1000U;
+          uart_last_tick = now;
           uart_counter++;
           printf("STM32H7 UART Hello #%lu\n", uart_counter);
       }
