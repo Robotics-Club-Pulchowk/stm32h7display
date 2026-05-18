@@ -53,7 +53,7 @@
 typedef struct
 {
     uint16_t x1, y1, x2, y2;
-    char     label[4];   /* single letter + NUL */
+    char     label[4];   /* up to 3 chars + NUL */
 } grid_cell_t;
 
 /* Generic labelled button used for sections B and C */
@@ -193,7 +193,7 @@ static void init_layout(void)
 
     static const uint32_t c_fill[SEC_C_CNT] = { YELLOW,  MAGENTA, CYAN  };
     static const uint32_t c_text[SEC_C_CNT] = { BLACK,   WHITE,   BLACK };
-    static const char    *c_lbl [SEC_C_CNT] = { "Start", "Retry1","Retry2" };
+    static const char    *c_lbl [SEC_C_CNT] = { "Start", "Retry1", "Retry2" };
 
     for (uint8_t i = 0; i < SEC_C_CNT; i++)
     {
