@@ -81,7 +81,41 @@ __attribute__((weak)) int _read(int file, char *ptr, int len)
 __attribute__((weak)) int _write(int file, char *ptr, int len)
 {
   (void)file;
-  usart1_send_bytes((const uint8_t *)ptr, (uint16_t)len);
+  if ((ptr == NULL) || (len <= 0))
+  {
+    return 0;
+  }
+
+  {
+    const uint8_t *data = (const uint8_t *)ptr;
+    int chunk_start = 0;
+    int i;
+    const uint8_t cr = '\r';
+    const uint8_t lf = '\n';
+
+    for (i = 0; i < len; i++)
+    {
+      if (data[i] == '\n')
+      {
+        if (i > chunk_start)
+        {
+          usart1_send_bytes(&data[chunk_start], (uint16_t)(i - chunk_start));
+        }
+
+        if ((i == 0) || (data[i - 1] != '\r'))
+        {
+          usart1_send_bytes(&cr, 1U);
+        }
+        usart1_send_bytes(&lf, 1U);
+        chunk_start = i + 1;
+      }
+    }
+
+    if (chunk_start < len)
+    {
+      usart1_send_bytes(&data[chunk_start], (uint16_t)(len - chunk_start));
+    }
+  }
   return len;
 }
 
