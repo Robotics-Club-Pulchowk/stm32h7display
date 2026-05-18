@@ -261,6 +261,7 @@ int main(void)
           if (button_index != BUTTON_INDEX_NONE)
           {
               set_background_color(color_buttons[button_index].color);
+              printf("%s\n", color_buttons[button_index].label);
 
               /* Wait for touch release */
               while (tp_dev.sta & TP_PRES_DOWN)
