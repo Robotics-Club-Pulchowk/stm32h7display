@@ -7,7 +7,7 @@
   * Layout (landscape):
   *   +----------+---------------------+
   *   |    B     |                     |
-  *   | Red Blue |       A (4×3)       |
+ *   | Red Blue |       A (3×4)       |
   *   +----------+    Green grid A–L   |
   *   |    C     |                     |
   *   | Start    |                     |
@@ -76,8 +76,8 @@ typedef struct
 #define FONT_SIZE   24   /* character height used throughout */
 
 /* Section-A grid dimensions */
-#define GRID_COLS   4
-#define GRID_ROWS   3
+#define GRID_COLS   3
+#define GRID_ROWS   4
 #define GRID_CELLS  (GRID_COLS * GRID_ROWS)   /* 12 */
 
 /* Section-B / C button counts */
@@ -276,7 +276,7 @@ static void draw_interface(void)
              (uint16_t)(midy + BORDER_W - 1),
              WHITE);
 
-    /* Section A — 4×3 green grid */
+    /* Section A — 3×4 green grid */
     for (uint8_t i = 0; i < GRID_CELLS; i++)
     {
         draw_cell(&grid[i]);
