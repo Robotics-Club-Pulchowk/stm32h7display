@@ -54,6 +54,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define UART_FRAME_INTERVAL_MS   1000u
+#define RESET_ARM_TIMEOUT_MS     1000u
+#define CTRL_LOCK_DURATION_MS   10000u
+#define MATRIX_BIT_COUNT           12u
 
 /* USER CODE END PD */
 
@@ -97,14 +101,14 @@ static void reset_all_state(void)
 
 static uint32_t elapsed_ms(uint32_t now, uint32_t then)
 {
-    return (uint32_t)(now - then);
+    return now - then;
 }
 
 static void send_uart_frame(void)
 {
     char team_hex = '0';
     char ctrl_bits[4];
-    char matrix_bits[13];
+    char matrix_bits[MATRIX_BIT_COUNT + 1];
     char frame[24];
 
     if (g_team_sel == 1)
@@ -121,11 +125,11 @@ static void send_uart_frame(void)
     ctrl_bits[2] = (g_ctrl_sel == 2) ? '1' : '0';
     ctrl_bits[3] = '\0';
 
-    for (uint8_t i = 0; i < 12; i++)
+    for (uint8_t i = 0; i < MATRIX_BIT_COUNT; i++)
     {
         matrix_bits[i] = ((g_matrix_bits >> i) & 0x1u) ? '1' : '0';
     }
-    matrix_bits[12] = '\0';
+    matrix_bits[MATRIX_BIT_COUNT] = '\0';
 
     snprintf(frame, sizeof(frame), "%c %s %s\r\n", team_hex, ctrl_bits, matrix_bits);
     printf("%s", frame);
@@ -194,13 +198,13 @@ int main(void)
           display_ui_set_ctrl_selection(-1);
       }
 
-      if (elapsed_ms(now_ms, g_last_uart_sent_ms) >= 1000u)
+      if (elapsed_ms(now_ms, g_last_uart_sent_ms) >= UART_FRAME_INTERVAL_MS)
       {
           send_uart_frame();
           g_last_uart_sent_ms = now_ms;
       }
 
-      if (g_reset_armed && elapsed_ms(now_ms, g_reset_arm_start) > 1000u)
+      if (g_reset_armed && elapsed_ms(now_ms, g_reset_arm_start) > RESET_ARM_TIMEOUT_MS)
       {
           g_reset_armed = 0;
       }
@@ -255,13 +259,13 @@ int main(void)
                   if (now_ms >= g_ctrl_lock_until)
                   {
                       g_ctrl_sel = (int8_t)(id - UI_TOUCH_CTRL_START);
-                      g_ctrl_lock_until = now_ms + 10000u;
+                      g_ctrl_lock_until = now_ms + CTRL_LOCK_DURATION_MS;
                       display_ui_set_ctrl_selection(g_ctrl_sel);
                   }
               }
               else if (id == UI_TOUCH_RESET)
               {
-                  if (g_reset_armed && elapsed_ms(now_ms, g_reset_arm_start) <= 1000u)
+                  if (g_reset_armed && elapsed_ms(now_ms, g_reset_arm_start) <= RESET_ARM_TIMEOUT_MS)
                   {
                       reset_all_state();
                   }
