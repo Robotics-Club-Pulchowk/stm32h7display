@@ -170,6 +170,7 @@ int main(void)
   /* Compute section layout and paint the UI */
   display_ui_init();
   display_ui_draw();
+  g_last_uart_sent_ms = HAL_GetTick();
 
   /* USER CODE END 2 */
 
@@ -208,9 +209,9 @@ int main(void)
               {
                   uint8_t idx = (uint8_t)(id - UI_TOUCH_GRID_A);
                   uint16_t mask = (uint16_t)(1u << idx);
-                  bool selected = ((g_matrix_bits & mask) == 0u);
+                  bool new_state = ((g_matrix_bits & mask) == 0u);
 
-                  if (selected)
+                  if (new_state)
                   {
                       g_matrix_bits |= mask;
                   }
@@ -219,7 +220,7 @@ int main(void)
                       g_matrix_bits &= (uint16_t)(~mask);
                   }
 
-                  display_ui_set_grid_selected(idx, selected);
+                  display_ui_set_grid_selected(idx, new_state);
               }
               else if (id == UI_TOUCH_TEAM_RED)
               {

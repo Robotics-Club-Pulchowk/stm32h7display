@@ -197,6 +197,7 @@ void display_ui_init(void)
     uint16_t gap = (uint16_t)(2 * CELL_PAD);
 
     /* Divide available height into SEC_C_CNT equal slots */
+    /* 7 units: Start(2) + Retry1(2) + Retry2(2) + Reset(1). */
     uint16_t unit       = (uint16_t)(ch2 / 7);
     uint16_t btn_h      = (uint16_t)((2 * unit > gap) ? (2 * unit - gap) : 1);
     uint16_t reset_h    = (uint16_t)((unit > gap) ? (unit - gap) : 1);
@@ -217,6 +218,7 @@ void display_ui_init(void)
     }
 
     sec_reset.x1         = CELL_PAD;
+    /* Place Reset after the three 2-unit control buttons (3 * 2 = 6 units). */
     sec_reset.y1         = (uint16_t)(cy1 + 6 * unit + CELL_PAD);
     sec_reset.x2         = (uint16_t)(cw2 - 1 - CELL_PAD);
     sec_reset.y2         = (uint16_t)(sec_reset.y1 + reset_h - 1);
