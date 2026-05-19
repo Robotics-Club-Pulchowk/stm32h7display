@@ -110,7 +110,7 @@ void display_ui_init(void)
     uint16_t bh     = midy;
     uint16_t half_w = (uint16_t)(bw / 2);
     uint16_t sq     = (uint16_t)((half_w < bh ? half_w : bh) - 2 * CELL_PAD);
-    uint16_t bvy    = (uint16_t)((bh - sq) / 2);
+    uint16_t bvy    = (uint16_t)((bh - sq) / 2);  /* vertical offset to centre */
 
     sec_b[0].x1         = (uint16_t)(0 + CELL_PAD);
     sec_b[0].y1         = bvy;
@@ -133,6 +133,8 @@ void display_ui_init(void)
     uint16_t cw2 = midx;
     uint16_t ch2 = (uint16_t)(h - cy1);
     uint16_t gap = (uint16_t)(2 * CELL_PAD);
+
+    /* Divide available height into SEC_C_CNT equal slots */
     uint16_t slot_h = (uint16_t)(ch2 / SEC_C_CNT);
     uint16_t btn_h  = (uint16_t)(slot_h - gap);
 
