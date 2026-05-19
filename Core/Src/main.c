@@ -58,6 +58,7 @@
 #define RESET_ARM_TIMEOUT_MS     1000u
 #define CTRL_LOCK_DURATION_MS   10000u
 #define MATRIX_BIT_COUNT           12u
+#define UART_FRAME_MAX_LEN         24u  /* team + space + 3 bits + space + 12 bits + CRLF + NUL */
 
 /* USER CODE END PD */
 
@@ -110,7 +111,7 @@ static void send_uart_frame(void)
     char team_hex = '0';
     char ctrl_bits[4];
     char matrix_bits[MATRIX_BIT_COUNT + 1];
-    char frame[24];
+    char frame[UART_FRAME_MAX_LEN];
 
     if (g_team_sel == 1)
     {
@@ -126,6 +127,7 @@ static void send_uart_frame(void)
     ctrl_bits[2] = (g_ctrl_sel == 2) ? '1' : '0';
     ctrl_bits[3] = '\0';
 
+    /* LSB-first mapping: bit0->A, bit1->B, ... bit11->L. */
     for (uint8_t i = 0; i < MATRIX_BIT_COUNT; i++)
     {
         matrix_bits[i] = ((g_matrix_bits >> i) & 0x1u) ? '1' : '0';

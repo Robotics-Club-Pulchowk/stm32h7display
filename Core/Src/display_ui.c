@@ -31,7 +31,7 @@ typedef struct
 /* Section-B / C button counts */
 #define SEC_B_CNT   2
 #define SEC_C_CNT   3
-#define SEC_C_UNITS 7    /* Start(2) + Retry1(2) + Retry2(2) + Reset(1) */
+#define SEC_C_UNITS 7    /* Vertical units in section C: Start 2 + Retry1 2 + Retry2 2 + Reset 1 */
 
 static grid_cell_t grid[GRID_CELLS];
 static button_t    sec_b[SEC_B_CNT];
@@ -201,6 +201,7 @@ void display_ui_init(void)
     uint16_t unit       = (uint16_t)(ch2 / SEC_C_UNITS);
     if (unit <= gap)
     {
+        /* Keep a small but usable minimum touch height beyond the black gap spacing. */
         unit = (uint16_t)(gap + 8);
     }
     uint16_t btn_h      = (uint16_t)((2 * unit > gap) ? (2 * unit - gap) : 1);
