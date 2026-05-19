@@ -101,6 +101,7 @@ static void reset_all_state(void)
 
 static uint32_t elapsed_ms(uint32_t now, uint32_t then)
 {
+    /* Unsigned subtraction is wrap-safe for HAL tick comparisons. */
     return now - then;
 }
 

@@ -199,6 +199,10 @@ void display_ui_init(void)
 
     /* Divide available height into SEC_C_CNT equal slots */
     uint16_t unit       = (uint16_t)(ch2 / SEC_C_UNITS);
+    if (unit <= gap)
+    {
+        unit = (uint16_t)(gap + 8);
+    }
     uint16_t btn_h      = (uint16_t)((2 * unit > gap) ? (2 * unit - gap) : 1);
     uint16_t reset_h    = (uint16_t)((unit > gap) ? (unit - gap) : 1);
 
