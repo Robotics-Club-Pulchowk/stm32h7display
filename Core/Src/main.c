@@ -69,7 +69,8 @@ static uint8_t  g_team_sel          = 0;      /* 0:none, 1:red(A), 2:blue(B) */
 static uint16_t g_matrix_bits       = 0;      /* A..L in bits 0..11 */
 static int8_t   g_ctrl_sel          = -1;     /* -1:none, 0:start, 1:retry1, 2:retry2 */
 static uint32_t g_ctrl_lock_until   = 0;      /* ms tick when control section unlocks */
-static uint32_t g_reset_arm_until   = 0;      /* ms tick for second reset press window */
+static uint8_t  g_reset_armed       = 0;
+static uint32_t g_reset_arm_start   = 0;      /* ms tick for first reset press */
 static uint32_t g_last_uart_sent_ms = 0;
 
 /* USER CODE END PV */
@@ -87,10 +88,16 @@ static void reset_all_state(void)
     g_matrix_bits     = 0;
     g_ctrl_sel        = -1;
     g_ctrl_lock_until = 0;
-    g_reset_arm_until = 0;
+    g_reset_armed     = 0;
+    g_reset_arm_start = 0;
 
     display_ui_reset_visual_state();
     display_ui_draw();
+}
+
+static uint32_t elapsed_ms(uint32_t now, uint32_t then)
+{
+    return (uint32_t)(now - then);
 }
 
 static void send_uart_frame(void)
@@ -187,10 +194,15 @@ int main(void)
           display_ui_set_ctrl_selection(-1);
       }
 
-      if ((now_ms - g_last_uart_sent_ms) >= 1000u)
+      if (elapsed_ms(now_ms, g_last_uart_sent_ms) >= 1000u)
       {
           send_uart_frame();
           g_last_uart_sent_ms = now_ms;
+      }
+
+      if (g_reset_armed && elapsed_ms(now_ms, g_reset_arm_start) > 1000u)
+      {
+          g_reset_armed = 0;
       }
 
       tp_dev.scan(0);
@@ -249,13 +261,14 @@ int main(void)
               }
               else if (id == UI_TOUCH_RESET)
               {
-                  if (now_ms <= g_reset_arm_until)
+                  if (g_reset_armed && elapsed_ms(now_ms, g_reset_arm_start) <= 1000u)
                   {
                       reset_all_state();
                   }
                   else
                   {
-                      g_reset_arm_until = now_ms + 1000u;
+                      g_reset_armed = 1;
+                      g_reset_arm_start = now_ms;
                   }
               }
 
