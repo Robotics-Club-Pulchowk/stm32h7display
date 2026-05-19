@@ -31,10 +31,16 @@ typedef struct
 /* Section-B / C button counts */
 #define SEC_B_CNT   2
 #define SEC_C_CNT   3
+#define SEC_C_UNITS 7    /* Vertical units in section C: Start 2 + Retry1 2 + Retry2 2 + Reset 1 */
 
 static grid_cell_t grid[GRID_CELLS];
 static button_t    sec_b[SEC_B_CNT];
 static button_t    sec_c[SEC_C_CNT];
+static button_t    sec_reset;
+
+static bool        grid_selected[GRID_CELLS];
+static uint8_t     team_selected;     /* 0:none, 1:red, 2:blue */
+static int8_t      ctrl_selected;     /* -1:none, 0:start, 1:retry1, 2:retry2 */
 
 static void draw_cell(const grid_cell_t *c)
 {
@@ -72,6 +78,63 @@ static void draw_button(const button_t *b)
     lcd_fill(b->x1, b->y1, b->x2, b->y2, b->fill_color);
     g_back_color = b->fill_color;
     lcd_show_string(tx, ty, text_w, text_h, FONT_SIZE, (char *)b->label, b->text_color);
+}
+
+static void draw_grid_idx(uint8_t idx)
+{
+    if (grid_selected[idx])
+    {
+        uint16_t bw = (uint16_t)(grid[idx].x2 - grid[idx].x1 + 1);
+        uint16_t bh = (uint16_t)(grid[idx].y2 - grid[idx].y1 + 1);
+        uint16_t tx = (uint16_t)(grid[idx].x1 + (bw - (FONT_SIZE / 2)) / 2);
+        uint16_t ty = (uint16_t)(grid[idx].y1 + (bh - FONT_SIZE) / 2);
+
+        lcd_fill(grid[idx].x1, grid[idx].y1, grid[idx].x2, grid[idx].y2, BLACK);
+        g_back_color = BLACK;
+        lcd_show_string(tx, ty, (uint16_t)(FONT_SIZE / 2), FONT_SIZE, FONT_SIZE, (char *)grid[idx].label, WHITE);
+    }
+    else
+    {
+        draw_cell(&grid[idx]);
+    }
+}
+
+static void draw_team_buttons(void)
+{
+    button_t b;
+
+    for (uint8_t i = 0; i < SEC_B_CNT; i++)
+    {
+        b = sec_b[i];
+
+        if ((team_selected == 1 && i == 0) || (team_selected == 2 && i == 1))
+        {
+            b.fill_color = BLACK;
+            b.text_color = WHITE;
+        }
+
+        draw_button(&b);
+    }
+}
+
+static void draw_ctrl_buttons(void)
+{
+    button_t b;
+
+    for (uint8_t i = 0; i < SEC_C_CNT; i++)
+    {
+        b = sec_c[i];
+
+        if (ctrl_selected == (int8_t)i)
+        {
+            b.fill_color = BLACK;
+            b.text_color = WHITE;
+        }
+
+        draw_button(&b);
+    }
+
+    draw_button(&sec_reset);
 }
 
 void display_ui_init(void)
@@ -135,8 +198,14 @@ void display_ui_init(void)
     uint16_t gap = (uint16_t)(2 * CELL_PAD);
 
     /* Divide available height into SEC_C_CNT equal slots */
-    uint16_t slot_h = (uint16_t)(ch2 / SEC_C_CNT);
-    uint16_t btn_h  = (uint16_t)(slot_h - gap);
+    uint16_t unit       = (uint16_t)(ch2 / SEC_C_UNITS);
+    if (unit <= gap)
+    {
+        /* Keep a small but usable minimum touch height beyond the black gap spacing. */
+        unit = (uint16_t)(gap + 8);
+    }
+    uint16_t btn_h      = (uint16_t)((2 * unit > gap) ? (2 * unit - gap) : 1);
+    uint16_t reset_h    = (uint16_t)((unit > gap) ? (unit - gap) : 1);
 
     static const uint32_t c_fill[SEC_C_CNT] = { YELLOW,  MAGENTA, CYAN  };
     static const uint32_t c_text[SEC_C_CNT] = { BLACK,   WHITE,   BLACK };
@@ -145,13 +214,24 @@ void display_ui_init(void)
     for (uint8_t i = 0; i < SEC_C_CNT; i++)
     {
         sec_c[i].x1         = (uint16_t)(CELL_PAD);
-        sec_c[i].y1         = (uint16_t)(cy1 + i * slot_h + CELL_PAD);
+        sec_c[i].y1         = (uint16_t)(cy1 + i * (2 * unit) + CELL_PAD);
         sec_c[i].x2         = (uint16_t)(cw2 - 1 - CELL_PAD);
         sec_c[i].y2         = (uint16_t)(sec_c[i].y1 + btn_h - 1);
         sec_c[i].fill_color = c_fill[i];
         sec_c[i].text_color = c_text[i];
         sec_c[i].label      = c_lbl[i];
     }
+
+    sec_reset.x1         = CELL_PAD;
+    /* Place Reset after the three 2-unit control buttons (3 * 2 = 6 units). */
+    sec_reset.y1         = (uint16_t)(cy1 + 6 * unit + CELL_PAD);
+    sec_reset.x2         = (uint16_t)(cw2 - 1 - CELL_PAD);
+    sec_reset.y2         = (uint16_t)(sec_reset.y1 + reset_h - 1);
+    sec_reset.fill_color = WHITE;
+    sec_reset.text_color = BLACK;
+    sec_reset.label      = "Reset";
+
+    display_ui_reset_visual_state();
 }
 
 void display_ui_draw(void)
@@ -173,23 +253,12 @@ void display_ui_draw(void)
              (uint16_t)(midy + BORDER_W - 1),
              WHITE);
 
-    for (uint8_t i = 0; i < GRID_CELLS; i++)
-    {
-        draw_cell(&grid[i]);
-    }
-
-    for (uint8_t i = 0; i < SEC_B_CNT; i++)
-    {
-        draw_button(&sec_b[i]);
-    }
-
-    for (uint8_t i = 0; i < SEC_C_CNT; i++)
-    {
-        draw_button(&sec_c[i]);
-    }
+    for (uint8_t i = 0; i < GRID_CELLS; i++) draw_grid_idx(i);
+    draw_team_buttons();
+    draw_ctrl_buttons();
 }
 
-const char *display_ui_get_touch_msg(uint16_t x, uint16_t y)
+ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
 {
     uint8_t i;
 
@@ -198,7 +267,7 @@ const char *display_ui_get_touch_msg(uint16_t x, uint16_t y)
         if (x >= grid[i].x1 && x <= grid[i].x2 &&
             y >= grid[i].y1 && y <= grid[i].y2)
         {
-            return grid[i].label;
+            return (ui_touch_id_t)(UI_TOUCH_GRID_A + i);
         }
     }
 
@@ -207,7 +276,7 @@ const char *display_ui_get_touch_msg(uint16_t x, uint16_t y)
         if (x >= sec_b[i].x1 && x <= sec_b[i].x2 &&
             y >= sec_b[i].y1 && y <= sec_b[i].y2)
         {
-            return sec_b[i].label;
+            return (i == 0) ? UI_TOUCH_TEAM_RED : UI_TOUCH_TEAM_BLUE;
         }
     }
 
@@ -216,9 +285,59 @@ const char *display_ui_get_touch_msg(uint16_t x, uint16_t y)
         if (x >= sec_c[i].x1 && x <= sec_c[i].x2 &&
             y >= sec_c[i].y1 && y <= sec_c[i].y2)
         {
-            return sec_c[i].label;
+            return (ui_touch_id_t)(UI_TOUCH_CTRL_START + i);
         }
     }
 
-    return NULL;
+    if (x >= sec_reset.x1 && x <= sec_reset.x2 &&
+        y >= sec_reset.y1 && y <= sec_reset.y2)
+    {
+        return UI_TOUCH_RESET;
+    }
+
+    return UI_TOUCH_NONE;
+}
+
+void display_ui_set_grid_selected(uint8_t idx, bool selected)
+{
+    if (idx >= GRID_CELLS)
+    {
+        return;
+    }
+
+    grid_selected[idx] = selected;
+    draw_grid_idx(idx);
+}
+
+void display_ui_set_team_selection(uint8_t team)
+{
+    if (team > 2)
+    {
+        return;
+    }
+
+    team_selected = team;
+    draw_team_buttons();
+}
+
+void display_ui_set_ctrl_selection(int8_t idx)
+{
+    if (idx < -1 || idx >= SEC_C_CNT)
+    {
+        return;
+    }
+
+    ctrl_selected = idx;
+    draw_ctrl_buttons();
+}
+
+void display_ui_reset_visual_state(void)
+{
+    for (uint8_t i = 0; i < GRID_CELLS; i++)
+    {
+        grid_selected[i] = false;
+    }
+
+    team_selected = 0;
+    ctrl_selected = -1;
 }
