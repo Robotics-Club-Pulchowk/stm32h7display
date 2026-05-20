@@ -94,7 +94,7 @@ static void draw_grid_idx(uint8_t idx)
 
     lcd_fill(grid[idx].x1, grid[idx].y1, grid[idx].x2, grid[idx].y2, GREEN);
     g_back_color = GREEN;
-    lcd_show_string(tx, ty, text_w, FONT_SIZE, FONT_SIZE, (char *)label, WHITE);
+    lcd_show_string(tx, ty, text_w, FONT_SIZE, FONT_SIZE, (char *)label, BLACK);
 }
 
 static void draw_team_buttons(void)
