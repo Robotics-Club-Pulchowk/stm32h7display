@@ -4,18 +4,16 @@
   * @file           : main.c
   * @brief          : Main program body — three-section touch UI
   *
-  * Layout (landscape):
-  *   +----------+---------------------+
-  *   |    B     |                     |
- *   | Red Blue |       A (3×4)       |
-  *   +----------+    Green grid A–L   |
-  *   |    C     |                     |
-  *   | Start    |                     |
-  *   | Retry1   |                     |
-  *   | Retry2   |                     |
-  *   +----------+---------------------+
-  *
-  * Touching any cell/button sends its label string over USART1 (DMA).
+ * Layout (landscape):
+ *   +----------+---------------------+
+ *   |    B     |                     |
+ *   | Red Blue |      A (3×4)        |
+ *   +----------+  Green grid 1–12    |
+ *   |    C     |                     |
+ *   |  Reset   |                     |
+ *   +----------+---------------------+
+ *
+ * Touching any cell/button updates UI state; UART sends periodic state frames.
   ******************************************************************************
   * @attention
   *
@@ -56,9 +54,8 @@
 /* USER CODE BEGIN PD */
 #define UART_FRAME_INTERVAL_MS   1000u
 #define RESET_ARM_TIMEOUT_MS     1000u
-#define CTRL_LOCK_DURATION_MS   10000u
-#define MATRIX_BIT_COUNT           12u
-#define UART_FRAME_MAX_LEN         24u  /* team + space + 3 bits + space + 12 bits + CRLF + NUL */
+#define GRID_CELL_COUNT            12u
+#define UART_FRAME_MAX_LEN         41u  /* team(2) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
 
 /* USER CODE END PD */
 
@@ -71,9 +68,7 @@
 
 /* USER CODE BEGIN PV */
 static uint8_t  g_team_sel          = 0;      /* 0:none, 1:red(A), 2:blue(B) */
-static uint16_t g_matrix_bits       = 0;      /* A..L in bits 0..11 */
-static int8_t   g_ctrl_sel          = -1;     /* -1:none, 0:start, 1:retry1, 2:retry2 */
-static uint32_t g_ctrl_lock_until   = 0;      /* ms tick when control section unlocks */
+static uint8_t  g_matrix_state[GRID_CELL_COUNT]; /* each cell: 0=digit, 1=AR, 2=MR, 3=FAKE */
 static uint8_t  g_reset_armed       = 0;
 static uint32_t g_reset_arm_start   = 0;      /* ms tick for first reset press */
 static uint32_t g_last_uart_sent_ms = 0;
@@ -90,9 +85,7 @@ static uint32_t g_last_uart_sent_ms = 0;
 static void reset_all_state(void)
 {
     g_team_sel        = 0;
-    g_matrix_bits     = 0;
-    g_ctrl_sel        = -1;
-    g_ctrl_lock_until = 0;
+    memset(g_matrix_state, 0, sizeof(g_matrix_state));
     g_reset_armed     = 0;
     g_reset_arm_start = 0;
 
@@ -106,35 +99,82 @@ static uint32_t elapsed_ms(uint32_t now, uint32_t then)
     return now - then;
 }
 
+static uint8_t frame_append_char(char *frame, size_t frame_len, size_t *off, char ch)
+{
+    if (*off >= (frame_len - 1u))
+    {
+        return 0u;
+    }
+
+    frame[*off] = ch;
+    (*off)++;
+    frame[*off] = '\0';
+    return 1u;
+}
+
+static uint8_t frame_append_bits(char *frame, size_t frame_len, size_t *off, const char *bits)
+{
+    if (bits == NULL)
+    {
+        return 0u;
+    }
+
+    return (uint8_t)(frame_append_char(frame, frame_len, off, bits[0]) &&
+                     frame_append_char(frame, frame_len, off, bits[1]));
+}
+
 static void send_uart_frame(void)
 {
-    char team_hex = '0';
-    char ctrl_bits[4];
-    char matrix_bits[MATRIX_BIT_COUNT + 1];
+    const char *team_bits = "00";
     char frame[UART_FRAME_MAX_LEN];
+    size_t off = 0;
 
     if (g_team_sel == 1)
     {
-        team_hex = 'A';
+        team_bits = "01";
     }
     else if (g_team_sel == 2)
     {
-        team_hex = 'B';
+        team_bits = "10";
     }
 
-    ctrl_bits[0] = (g_ctrl_sel == 0) ? '1' : '0';
-    ctrl_bits[1] = (g_ctrl_sel == 1) ? '1' : '0';
-    ctrl_bits[2] = (g_ctrl_sel == 2) ? '1' : '0';
-    ctrl_bits[3] = '\0';
-
-    /* LSB-first mapping: bit0->A, bit1->B, ... bit11->L. */
-    for (uint8_t i = 0; i < MATRIX_BIT_COUNT; i++)
+    frame[0] = '\0';
+    if (!frame_append_bits(frame, sizeof(frame), &off, team_bits))
     {
-        matrix_bits[i] = ((g_matrix_bits >> i) & 0x1u) ? '1' : '0';
+        return;
     }
-    matrix_bits[MATRIX_BIT_COUNT] = '\0';
 
-    snprintf(frame, sizeof(frame), "%c %s %s\r\n", team_hex, ctrl_bits, matrix_bits);
+    for (uint8_t i = 0; i < GRID_CELL_COUNT; i++)
+    {
+        const char *cell_bits = "00";
+        uint8_t state = (uint8_t)(g_matrix_state[i] & 0x3u);
+
+        if (state == 1u)
+        {
+            cell_bits = "01";
+        }
+        else if (state == 2u)
+        {
+            cell_bits = "10";
+        }
+        else if (state == 3u)
+        {
+            cell_bits = "11";
+        }
+
+        if (!frame_append_char(frame, sizeof(frame), &off, ' ') ||
+            !frame_append_bits(frame, sizeof(frame), &off, cell_bits))
+        {
+            return;
+        }
+    }
+
+    if (!frame_append_char(frame, sizeof(frame), &off, '\r') ||
+        !frame_append_char(frame, sizeof(frame), &off, '\n'))
+    {
+        return;
+    }
+
     printf("%s", frame);
 }
 
@@ -195,12 +235,6 @@ int main(void)
   {
       uint32_t now_ms = HAL_GetTick();
 
-      if (g_ctrl_sel >= 0 && now_ms >= g_ctrl_lock_until)
-      {
-          g_ctrl_sel = -1;
-          display_ui_set_ctrl_selection(-1);
-      }
-
       if (elapsed_ms(now_ms, g_last_uart_sent_ms) >= UART_FRAME_INTERVAL_MS)
       {
           send_uart_frame();
@@ -227,19 +261,8 @@ int main(void)
               if (id >= UI_TOUCH_GRID_A && id <= UI_TOUCH_GRID_L)
               {
                   uint8_t idx = (uint8_t)(id - UI_TOUCH_GRID_A);
-                  uint16_t mask = (uint16_t)(1u << idx);
-                  bool new_state = ((g_matrix_bits & mask) == 0u);
-
-                  if (new_state)
-                  {
-                      g_matrix_bits |= mask;
-                  }
-                  else
-                  {
-                      g_matrix_bits &= (uint16_t)(~mask);
-                  }
-
-                  display_ui_set_grid_selected(idx, new_state);
+                  g_matrix_state[idx] = (uint8_t)((g_matrix_state[idx] + 1u) & 0x3u);
+                  display_ui_set_grid_state(idx, g_matrix_state[idx]);
               }
               else if (id == UI_TOUCH_TEAM_RED)
               {
@@ -255,15 +278,6 @@ int main(void)
                   {
                       g_team_sel = 2;
                       display_ui_set_team_selection(2);
-                  }
-              }
-              else if (id >= UI_TOUCH_CTRL_START && id <= UI_TOUCH_CTRL_RETRY2)
-              {
-                  if (now_ms >= g_ctrl_lock_until)
-                  {
-                      g_ctrl_sel = (int8_t)(id - UI_TOUCH_CTRL_START);
-                      g_ctrl_lock_until = now_ms + CTRL_LOCK_DURATION_MS;
-                      display_ui_set_ctrl_selection(g_ctrl_sel);
                   }
               }
               else if (id == UI_TOUCH_RESET)
