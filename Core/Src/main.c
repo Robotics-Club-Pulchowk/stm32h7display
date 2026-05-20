@@ -72,7 +72,7 @@ static uint8_t  g_matrix_state[GRID_CELL_COUNT]; /* each cell: 0=digit, 1=AR, 2=
 static uint8_t  g_reset_armed       = 0;
 static uint32_t g_reset_arm_start   = 0;      /* ms tick for first reset press */
 static uint32_t g_last_uart_sent_ms = 0;
-/* Zero-based grid indices in UART transmit order 1..12; storage order is [12,11,10,7,8,9,6,5,4,1,2,3]. */
+/* g_uart_cell_order[n-1] gives the zero-based storage index for UART transmit position n (n=1..12). */
 static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] = {9u, 10u, 11u, 8u, 7u, 6u, 3u, 4u, 5u, 2u, 1u, 0u};
 
 /* USER CODE END PV */
