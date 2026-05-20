@@ -77,7 +77,7 @@ static uint32_t g_last_uart_sent_ms = 0;
  * g_uart_cell_order[n-1] gives the storage index used for UART transmit position n (n=1..12).
  * Example: transmit cell 1 uses index 9; transmit cell 12 uses index 0.
  */
-static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] = {9u, 10u, 11u, 8u, 7u, 6u, 3u, 4u, 5u, 2u, 1u, 0u};
+static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] = {9u, 10u, 11u, 8u, 7u, 6u, 3u, 4u, 5u, 2u, 1u, 0u}; /* 1->9,2->10,3->11,4->8,5->7,6->6,7->3,8->4,9->5,10->2,11->1,12->0 */
 
 /* USER CODE END PV */
 
