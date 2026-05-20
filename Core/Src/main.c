@@ -75,6 +75,7 @@ static uint32_t g_last_uart_sent_ms = 0;
 /*
  * UI storage index order follows on-screen scan order: [12,11,10,7,8,9,6,5,4,1,2,3].
  * g_uart_cell_order[n-1] gives the storage index used for UART transmit position n (n=1..12).
+ * Example: transmit cell 1 uses index 9; transmit cell 12 uses index 0.
  */
 static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] = {9u, 10u, 11u, 8u, 7u, 6u, 3u, 4u, 5u, 2u, 1u, 0u};
 
