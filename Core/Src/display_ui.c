@@ -22,6 +22,7 @@ typedef struct
 #define BORDER_W    2    /* width of the white section-divider lines (px) */
 #define CELL_PAD    3    /* black gap around each cell / button (px) */
 #define FONT_SIZE   24   /* character height used throughout */
+#define RESET_HEIGHT_RATIO_DEN 5u  /* reset height = available section-C height / 5 */
 
 /* Section-A grid dimensions */
 #define GRID_COLS   3
@@ -34,6 +35,13 @@ typedef struct
 static grid_cell_t grid[GRID_CELLS];
 static button_t    sec_b[SEC_B_CNT];
 static button_t    sec_reset;
+static const char *grid_labels[GRID_CELLS] =
+{
+    "12", "11", "10",
+    "7",  "8",  "9",
+    "6",  "5",  "4",
+    "1",  "2",  "3"
+};
 
 static uint8_t     grid_state[GRID_CELLS]; /* 0:number, 1:AR, 2:MR, 3:FAKE */
 static uint8_t     team_selected;     /* 0:none, 1:red, 2:blue */
@@ -122,14 +130,6 @@ void display_ui_init(void)
     uint16_t cw  = (uint16_t)(aw / GRID_COLS);
     uint16_t ch  = (uint16_t)(ah / GRID_ROWS);
 
-    static const char *grid_labels[GRID_CELLS] =
-    {
-        "12", "11", "10",
-        "7",  "8",  "9",
-        "6",  "5",  "4",
-        "1",  "2",  "3"
-    };
-
     for (uint8_t r = 0; r < GRID_ROWS; r++)
     {
         for (uint8_t c = 0; c < GRID_COLS; c++)
@@ -175,7 +175,7 @@ void display_ui_init(void)
     uint16_t ch2         = (uint16_t)(h - cy1);
     uint16_t inner_top   = (uint16_t)(cy1 + CELL_PAD);
     uint16_t avail_h     = (uint16_t)(ch2 > 2 * CELL_PAD ? (ch2 - 2 * CELL_PAD) : 1);
-    uint16_t reset_h     = (uint16_t)(avail_h / 5);
+    uint16_t reset_h     = (uint16_t)(avail_h / RESET_HEIGHT_RATIO_DEN);
     if (reset_h == 0) reset_h = 1;
 
     sec_reset.x1         = CELL_PAD;

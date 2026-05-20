@@ -55,7 +55,7 @@
 #define UART_FRAME_INTERVAL_MS   1000u
 #define RESET_ARM_TIMEOUT_MS     1000u
 #define GRID_CELL_COUNT            12u
-#define UART_FRAME_MAX_LEN         48u  /* team(2) + 12*(" " + 2 bits) + CRLF + NUL */
+#define UART_FRAME_MAX_LEN         41u  /* team(2) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
 
 /* USER CODE END PD */
 
@@ -99,6 +99,30 @@ static uint32_t elapsed_ms(uint32_t now, uint32_t then)
     return now - then;
 }
 
+static uint8_t frame_append_char(char *frame, size_t frame_len, size_t *off, char ch)
+{
+    if (*off >= (frame_len - 1u))
+    {
+        return 0u;
+    }
+
+    frame[*off] = ch;
+    (*off)++;
+    frame[*off] = '\0';
+    return 1u;
+}
+
+static uint8_t frame_append_bits(char *frame, size_t frame_len, size_t *off, const char *bits)
+{
+    if (bits == NULL)
+    {
+        return 0u;
+    }
+
+    return (uint8_t)(frame_append_char(frame, frame_len, off, bits[0]) &&
+                     frame_append_char(frame, frame_len, off, bits[1]));
+}
+
 static void send_uart_frame(void)
 {
     const char *team_bits = "00";
@@ -114,9 +138,13 @@ static void send_uart_frame(void)
         team_bits = "10";
     }
 
-    off += (size_t)snprintf(frame + off, sizeof(frame) - off, "%s", team_bits);
+    frame[0] = '\0';
+    if (!frame_append_bits(frame, sizeof(frame), &off, team_bits))
+    {
+        return;
+    }
 
-    for (uint8_t i = 0; i < GRID_CELL_COUNT && off < sizeof(frame); i++)
+    for (uint8_t i = 0; i < GRID_CELL_COUNT; i++)
     {
         const char *cell_bits = "00";
         uint8_t state = (uint8_t)(g_matrix_state[i] & 0x3u);
@@ -134,10 +162,19 @@ static void send_uart_frame(void)
             cell_bits = "11";
         }
 
-        off += (size_t)snprintf(frame + off, sizeof(frame) - off, " %s", cell_bits);
+        if (!frame_append_char(frame, sizeof(frame), &off, ' ') ||
+            !frame_append_bits(frame, sizeof(frame), &off, cell_bits))
+        {
+            return;
+        }
     }
 
-    snprintf(frame + off, (off < sizeof(frame)) ? (sizeof(frame) - off) : 0u, "\r\n");
+    if (!frame_append_char(frame, sizeof(frame), &off, '\r') ||
+        !frame_append_char(frame, sizeof(frame), &off, '\n'))
+    {
+        return;
+    }
+
     printf("%s", frame);
 }
 
