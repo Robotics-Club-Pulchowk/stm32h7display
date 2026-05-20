@@ -72,6 +72,12 @@ static uint8_t  g_matrix_state[GRID_CELL_COUNT]; /* each cell: 0=digit, 1=AR, 2=
 static uint8_t  g_reset_armed       = 0;
 static uint32_t g_reset_arm_start   = 0;      /* ms tick for first reset press */
 static uint32_t g_last_uart_sent_ms = 0;
+/*
+ * UI storage index order follows on-screen scan order: [12,11,10,7,8,9,6,5,4,1,2,3].
+ * g_uart_cell_order[n-1] gives the storage index used for UART transmit position n (n=1..12).
+ * Example: transmit cell 1 uses index 9; transmit cell 12 uses index 0.
+ */
+static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] = {9u, 10u, 11u, 8u, 7u, 6u, 3u, 4u, 5u, 2u, 1u, 0u}; /* 1->9,2->10,3->11,4->8,5->7,6->6,7->3,8->4,9->5,10->2,11->1,12->0 */
 
 /* USER CODE END PV */
 
@@ -146,8 +152,9 @@ static void send_uart_frame(void)
 
     for (uint8_t i = 0; i < GRID_CELL_COUNT; i++)
     {
+        uint8_t cell_idx = g_uart_cell_order[i];
         const char *cell_bits = "00";
-        uint8_t state = (uint8_t)(g_matrix_state[i] & 0x3u);
+        uint8_t state = (uint8_t)(g_matrix_state[cell_idx] & 0x3u);
 
         if (state == 1u)
         {
