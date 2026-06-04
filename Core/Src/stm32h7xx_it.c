@@ -205,6 +205,11 @@ void DMA1_Stream0_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_usart1_tx);
 }
 
+void DMA1_Stream1_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_usart1_rx);
+}
+
 void USART1_IRQHandler(void)
 {
   HAL_UART_IRQHandler(&huart1);

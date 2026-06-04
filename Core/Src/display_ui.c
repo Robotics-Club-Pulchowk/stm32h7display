@@ -23,6 +23,12 @@ typedef struct
 #define CELL_PAD    3    /* black gap around each cell / button (px) */
 #define FONT_SIZE   24   /* character height used throughout */
 #define RESET_HEIGHT_RATIO_DEN 5u  /* reset height = available section-C height / 5 */
+#define MODE_HEIGHT_RATIO_DEN  5u
+#define RX_TEXT_LEN            96u
+#define RX_TEXT_PADDING        16u
+#define RX_TITLE_X_OFFSET      8u
+#define RX_TITLE_Y_OFFSET      8u
+#define RX_BODY_Y_OFFSET       12u
 
 /* Section-A grid dimensions */
 #define GRID_COLS   3
@@ -35,6 +41,7 @@ typedef struct
 static grid_cell_t grid[GRID_CELLS];
 static button_t    sec_b[SEC_B_CNT];
 static button_t    sec_reset;
+static button_t    sec_mode;
 static const char *grid_labels[GRID_CELLS] =
 {
     "12", "11", "10",
@@ -45,6 +52,9 @@ static const char *grid_labels[GRID_CELLS] =
 
 static uint8_t     grid_state[GRID_CELLS]; /* 0:number, 1:AR, 2:MR, 3:FAKE */
 static uint8_t     team_selected;     /* 0:none, 1:red, 2:blue */
+static uint8_t     app_mode = DISPLAY_UI_MODE_TX;
+static char        rx_text[RX_TEXT_LEN] = "Waiting for UART data...";
+static uint16_t    rx_area_x1, rx_area_y1, rx_area_x2, rx_area_y2;
 
 static void draw_button(const button_t *b)
 {
@@ -115,6 +125,58 @@ static void draw_team_buttons(void)
     }
 }
 
+static void draw_mode_button(void)
+{
+    button_t b = sec_mode;
+
+    if (app_mode == DISPLAY_UI_MODE_RX)
+    {
+        b.fill_color = BLACK;
+        b.text_color = WHITE;
+        b.label = "Mode: RX";
+    }
+    else
+    {
+        b.fill_color = WHITE;
+        b.text_color = BLACK;
+        b.label = "Mode: TX";
+    }
+
+    draw_button(&b);
+}
+
+static void draw_rx_area(void)
+{
+    uint16_t rx_w;
+    uint16_t rx_h;
+    uint16_t text_w;
+    uint16_t text_h;
+
+    if ((rx_area_x2 < rx_area_x1) || (rx_area_y2 < rx_area_y1))
+    {
+        /* Coordinates are pre-clamped in init; keep this as a final runtime safety guard. */
+        return;
+    }
+
+    rx_w = (uint16_t)(rx_area_x2 - rx_area_x1 + 1u);
+    rx_h = (uint16_t)(rx_area_y2 - rx_area_y1 + 1u);
+    text_w = (uint16_t)(rx_w > RX_TEXT_PADDING ? rx_w - RX_TEXT_PADDING : rx_w);
+    text_h = (uint16_t)(rx_h > (FONT_SIZE + RX_TEXT_PADDING) ? rx_h - (FONT_SIZE + RX_TEXT_PADDING) : FONT_SIZE);
+    if ((text_w < 8u) || (text_h < FONT_SIZE))
+    {
+        return;
+    }
+
+    lcd_fill(rx_area_x1, rx_area_y1, rx_area_x2, rx_area_y2, BLACK);
+    g_back_color = BLACK;
+    lcd_show_string((uint16_t)(rx_area_x1 + RX_TITLE_X_OFFSET),
+                    (uint16_t)(rx_area_y1 + RX_TITLE_Y_OFFSET),
+                    text_w, FONT_SIZE, FONT_SIZE, (char *)"RX MODE", GREEN);
+    lcd_show_string((uint16_t)(rx_area_x1 + RX_TITLE_X_OFFSET),
+                    (uint16_t)(rx_area_y1 + FONT_SIZE + RX_BODY_Y_OFFSET),
+                    text_w, text_h, 16, rx_text, WHITE);
+}
+
 void display_ui_init(void)
 {
     uint16_t w    = lcddev.width;
@@ -146,6 +208,13 @@ void display_ui_init(void)
         }
     }
 
+    rx_area_x1 = (uint16_t)(ax1 + CELL_PAD);
+    rx_area_y1 = CELL_PAD;
+    rx_area_x2 = (uint16_t)(w - 1u - CELL_PAD);
+    rx_area_y2 = (uint16_t)(h - 1u - CELL_PAD);
+    if (rx_area_x2 < rx_area_x1) rx_area_x2 = rx_area_x1;
+    if (rx_area_y2 < rx_area_y1) rx_area_y2 = rx_area_y1;
+
     /* ── Section B  (top-left quarter) ───────────────────────────────── */
     uint16_t bw     = midx;
     uint16_t bh     = midy;
@@ -176,7 +245,10 @@ void display_ui_init(void)
     uint16_t inner_top   = (uint16_t)(cy1 + CELL_PAD);
     uint16_t avail_h     = (uint16_t)(ch2 > 2 * CELL_PAD ? (ch2 - 2 * CELL_PAD) : 1);
     uint16_t reset_h     = (uint16_t)(avail_h / RESET_HEIGHT_RATIO_DEN);
+    uint16_t mode_h      = (uint16_t)(avail_h / MODE_HEIGHT_RATIO_DEN);
+    uint16_t mode_y2     = (uint16_t)(cy1 + ch2 - 1u - CELL_PAD);
     if (reset_h == 0) reset_h = 1;
+    if (mode_h == 0) mode_h = 1;
 
     sec_reset.x1         = CELL_PAD;
     sec_reset.y1         = (uint16_t)(inner_top + (avail_h - reset_h) / 2);
@@ -185,6 +257,14 @@ void display_ui_init(void)
     sec_reset.fill_color = WHITE;
     sec_reset.text_color = BLACK;
     sec_reset.label      = "Reset";
+
+    sec_mode.x1          = CELL_PAD;
+    sec_mode.y2          = mode_y2;
+    sec_mode.y1          = (uint16_t)(mode_y2 >= (mode_h - 1u) ? (mode_y2 - mode_h + 1u) : mode_y2);
+    sec_mode.x2          = (uint16_t)(cw2 - 1u - CELL_PAD);
+    sec_mode.fill_color  = WHITE;
+    sec_mode.text_color  = BLACK;
+    sec_mode.label       = "Mode: TX";
 
     display_ui_reset_visual_state();
 }
@@ -208,9 +288,18 @@ void display_ui_draw(void)
              (uint16_t)(midy + BORDER_W - 1),
              WHITE);
 
-    for (uint8_t i = 0; i < GRID_CELLS; i++) draw_grid_idx(i);
-    draw_team_buttons();
-    draw_button(&sec_reset);
+    if (app_mode == DISPLAY_UI_MODE_TX)
+    {
+        for (uint8_t i = 0; i < GRID_CELLS; i++) draw_grid_idx(i);
+        draw_team_buttons();
+        draw_button(&sec_reset);
+    }
+    else
+    {
+        draw_rx_area();
+    }
+
+    draw_mode_button();
 }
 
 ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
@@ -239,6 +328,12 @@ ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
         y >= sec_reset.y1 && y <= sec_reset.y2)
     {
         return UI_TOUCH_RESET;
+    }
+
+    if (x >= sec_mode.x1 && x <= sec_mode.x2 &&
+        y >= sec_mode.y1 && y <= sec_mode.y2)
+    {
+        return UI_TOUCH_MODE_TOGGLE;
     }
 
     return UI_TOUCH_NONE;
@@ -274,4 +369,32 @@ void display_ui_reset_visual_state(void)
     }
 
     team_selected = 0;
+}
+
+void display_ui_set_mode(uint8_t mode)
+{
+    if (mode > DISPLAY_UI_MODE_RX)
+    {
+        return;
+    }
+
+    app_mode = mode;
+    display_ui_draw();
+}
+
+void display_ui_set_rx_text(const char *text)
+{
+    if (text == NULL)
+    {
+        return;
+    }
+
+    strncpy(rx_text, text, sizeof(rx_text) - 1u);
+    rx_text[sizeof(rx_text) - 1u] = '\0';
+
+    if (app_mode == DISPLAY_UI_MODE_RX)
+    {
+        draw_rx_area();
+        draw_mode_button();
+    }
 }
