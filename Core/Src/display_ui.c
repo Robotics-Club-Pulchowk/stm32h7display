@@ -38,9 +38,9 @@ static button_t    sec_reset;
 static const char *grid_labels[GRID_CELLS] =
 {
     "12", "11", "10",
-    "7",  "8",  "9",
+    "9",  "8",  "7",
     "6",  "5",  "4",
-    "1",  "2",  "3"
+    "3",  "2",  "1"
 };
 
 static uint8_t     grid_state[GRID_CELLS]; /* 0:number, 1:AR, 2:MR, 3:FAKE */
