@@ -230,7 +230,6 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
 void usart1_start_rx_dma(void)
 {
     g_usart1_rx_read_idx = 0U;
-    memset(g_usart1_rx_buf, 0, sizeof(g_usart1_rx_buf));
 
     if (HAL_UART_Receive_DMA(&huart1, g_usart1_rx_buf, USART1_DMA_RX_BUF_SIZE) != HAL_OK)
     {

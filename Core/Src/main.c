@@ -56,7 +56,7 @@
 #define RESET_ARM_TIMEOUT_MS     1000u
 #define GRID_CELL_COUNT            12u
 #define UART_FRAME_MAX_LEN         41u  /* team(2) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
-#define UART_RX_LINE_MAX           96u  /* fits the RX area while keeping RAM usage small */
+#define UART_RX_LINE_MAX           96u  /* includes NUL terminator; payload bytes are UART_RX_LINE_MAX-1 */
 
 /* USER CODE END PD */
 
