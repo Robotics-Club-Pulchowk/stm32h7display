@@ -11,12 +11,34 @@
 
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 #define USART1_DMA_TX_BUF_SIZE        256U
 #define USART1_DMA_WAIT_TIMEOUT_MS    100U
+#define USART1_DMA_RX_BUF_SIZE        256U
 
 static volatile uint8_t g_usart1_tx_busy = 0U;
 static uint8_t g_usart1_tx_buf[USART1_DMA_TX_BUF_SIZE];
+static uint8_t g_usart1_rx_buf[USART1_DMA_RX_BUF_SIZE];
+static volatile uint16_t g_usart1_rx_read_idx = 0U;
+
+static uint16_t usart1_rx_dma_write_idx(void)
+{
+    uint16_t write_idx;
+
+    if (huart1.hdmarx == NULL)
+    {
+        return 0U;
+    }
+
+    write_idx = (uint16_t)(USART1_DMA_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(huart1.hdmarx));
+    if (write_idx >= USART1_DMA_RX_BUF_SIZE)
+    {
+        write_idx = 0U;
+    }
+
+    return write_idx;
+}
 
 static uint8_t usart1_tx_is_busy(void)
 {
@@ -96,10 +118,32 @@ void usart1_init(uint32_t baud)
 
     __HAL_LINKDMA(&huart1, hdmatx, hdma_usart1_tx);
 
+    hdma_usart1_rx.Instance = DMA1_Stream1;
+    hdma_usart1_rx.Init.Request = DMA_REQUEST_USART1_RX;
+    hdma_usart1_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_usart1_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_usart1_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_usart1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+    hdma_usart1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+    hdma_usart1_rx.Init.Mode = DMA_CIRCULAR;
+    hdma_usart1_rx.Init.Priority = DMA_PRIORITY_HIGH;
+    hdma_usart1_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+
+    if (HAL_DMA_Init(&hdma_usart1_rx) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    __HAL_LINKDMA(&huart1, hdmarx, hdma_usart1_rx);
+
     HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+    HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
     HAL_NVIC_SetPriority(USART1_IRQn, 5, 1);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
+
+    usart1_start_rx_dma();
 }
 
 void usart1_send_char(char c)
@@ -175,15 +219,63 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
     }
 }
 
+void usart1_start_rx_dma(void)
+{
+    g_usart1_rx_read_idx = 0U;
+    memset(g_usart1_rx_buf, 0, sizeof(g_usart1_rx_buf));
+
+    if (HAL_UART_Receive_DMA(&huart1, g_usart1_rx_buf, USART1_DMA_RX_BUF_SIZE) != HAL_OK)
+    {
+        Error_Handler();
+    }
+
+    if (huart1.hdmarx != NULL)
+    {
+        __HAL_DMA_DISABLE_IT(huart1.hdmarx, DMA_IT_HT);
+    }
+}
+
+uint16_t usart1_rx_dma_read(uint8_t *data, uint16_t max_len)
+{
+    uint16_t copied = 0U;
+    uint16_t write_idx;
+
+    if ((data == NULL) || (max_len == 0U) || (huart1.hdmarx == NULL))
+    {
+        return 0U;
+    }
+
+    write_idx = usart1_rx_dma_write_idx();
+
+    while ((g_usart1_rx_read_idx != write_idx) && (copied < max_len))
+    {
+        data[copied++] = g_usart1_rx_buf[g_usart1_rx_read_idx];
+        g_usart1_rx_read_idx++;
+        if (g_usart1_rx_read_idx >= USART1_DMA_RX_BUF_SIZE)
+        {
+            g_usart1_rx_read_idx = 0U;
+        }
+    }
+
+    return copied;
+}
+
 int usart1_recv_ready(void)
 {
-    return (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE) != RESET) ? 1 : 0;
+    if (huart1.hdmarx == NULL)
+    {
+        return 0;
+    }
+
+    return (g_usart1_rx_read_idx != usart1_rx_dma_write_idx()) ? 1 : 0;
 }
 
 char usart1_recv_char(void)
 {
     uint8_t ch = 0;
-    (void)HAL_UART_Receive(&huart1, &ch, 1, HAL_MAX_DELAY);
+    while (usart1_rx_dma_read(&ch, 1U) == 0U)
+    {
+    }
     return (char)ch;
 }
 
