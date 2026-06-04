@@ -58,7 +58,7 @@
 #define UART_FRAME_MAX_LEN         41u  /* team(2) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
 #define APP_MODE_TX                 0u
 #define APP_MODE_RX                 1u
-#define UART_RX_LINE_MAX           96u
+#define UART_RX_LINE_MAX           96u  /* fits the RX area while keeping RAM usage small */
 
 /* USER CODE END PD */
 

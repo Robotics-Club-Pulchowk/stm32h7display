@@ -209,6 +209,8 @@ void display_ui_init(void)
     rx_area_y1 = CELL_PAD;
     rx_area_x2 = (uint16_t)(w - 1u - CELL_PAD);
     rx_area_y2 = (uint16_t)(h - 1u - CELL_PAD);
+    if (rx_area_x2 < rx_area_x1) rx_area_x2 = rx_area_x1;
+    if (rx_area_y2 < rx_area_y1) rx_area_y2 = rx_area_y1;
 
     /* ── Section B  (top-left quarter) ───────────────────────────────── */
     uint16_t bw     = midx;

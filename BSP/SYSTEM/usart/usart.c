@@ -16,6 +16,7 @@ DMA_HandleTypeDef hdma_usart1_rx;
 #define USART1_DMA_TX_BUF_SIZE        256U
 #define USART1_DMA_WAIT_TIMEOUT_MS    100U
 #define USART1_DMA_RX_BUF_SIZE        256U
+#define USART1_RECV_BLOCK_TIMEOUT_MS 1000U
 
 static volatile uint8_t g_usart1_tx_busy = 0U;
 static uint8_t g_usart1_tx_buf[USART1_DMA_TX_BUF_SIZE];
@@ -231,6 +232,7 @@ void usart1_start_rx_dma(void)
 
     if (huart1.hdmarx != NULL)
     {
+        /* RX uses polling over the circular DMA write pointer, so half-transfer IRQ is unnecessary. */
         __HAL_DMA_DISABLE_IT(huart1.hdmarx, DMA_IT_HT);
     }
 }
@@ -273,8 +275,13 @@ int usart1_recv_ready(void)
 char usart1_recv_char(void)
 {
     uint8_t ch = 0;
+    uint32_t deadline = HAL_GetTick() + USART1_RECV_BLOCK_TIMEOUT_MS;
     while (usart1_rx_dma_read(&ch, 1U) == 0U)
     {
+        if ((int32_t)(HAL_GetTick() - deadline) >= 0)
+        {
+            return '\0';
+        }
     }
     return (char)ch;
 }
