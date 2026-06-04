@@ -24,8 +24,6 @@ typedef struct
 #define FONT_SIZE   24   /* character height used throughout */
 #define RESET_HEIGHT_RATIO_DEN 5u  /* reset height = available section-C height / 5 */
 #define MODE_HEIGHT_RATIO_DEN  5u
-#define APP_MODE_TX            0u
-#define APP_MODE_RX            1u
 #define RX_TEXT_LEN            96u
 #define RX_TEXT_PADDING        16u
 #define RX_TITLE_X_OFFSET      8u
@@ -54,7 +52,7 @@ static const char *grid_labels[GRID_CELLS] =
 
 static uint8_t     grid_state[GRID_CELLS]; /* 0:number, 1:AR, 2:MR, 3:FAKE */
 static uint8_t     team_selected;     /* 0:none, 1:red, 2:blue */
-static uint8_t     app_mode = APP_MODE_TX;
+static uint8_t     app_mode = DISPLAY_UI_MODE_TX;
 static char        rx_text[RX_TEXT_LEN] = "Waiting for UART data...";
 static uint16_t    rx_area_x1, rx_area_y1, rx_area_x2, rx_area_y2;
 
@@ -131,7 +129,7 @@ static void draw_mode_button(void)
 {
     button_t b = sec_mode;
 
-    if (app_mode == APP_MODE_RX)
+    if (app_mode == DISPLAY_UI_MODE_RX)
     {
         b.fill_color = BLACK;
         b.text_color = WHITE;
@@ -285,7 +283,7 @@ void display_ui_draw(void)
              (uint16_t)(midy + BORDER_W - 1),
              WHITE);
 
-    if (app_mode == APP_MODE_TX)
+    if (app_mode == DISPLAY_UI_MODE_TX)
     {
         for (uint8_t i = 0; i < GRID_CELLS; i++) draw_grid_idx(i);
         draw_team_buttons();
@@ -370,7 +368,7 @@ void display_ui_reset_visual_state(void)
 
 void display_ui_set_mode(uint8_t mode)
 {
-    if (mode > APP_MODE_RX)
+    if (mode > DISPLAY_UI_MODE_RX)
     {
         return;
     }
@@ -389,7 +387,7 @@ void display_ui_set_rx_text(const char *text)
     strncpy(rx_text, text, sizeof(rx_text) - 1u);
     rx_text[sizeof(rx_text) - 1u] = '\0';
 
-    if (app_mode == APP_MODE_RX)
+    if (app_mode == DISPLAY_UI_MODE_RX)
     {
         draw_rx_area();
         draw_mode_button();

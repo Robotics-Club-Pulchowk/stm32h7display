@@ -56,8 +56,6 @@
 #define RESET_ARM_TIMEOUT_MS     1000u
 #define GRID_CELL_COUNT            12u
 #define UART_FRAME_MAX_LEN         41u  /* team(2) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
-#define APP_MODE_TX                 0u
-#define APP_MODE_RX                 1u
 #define UART_RX_LINE_MAX           96u  /* fits the RX area while keeping RAM usage small */
 
 /* USER CODE END PD */
@@ -72,7 +70,7 @@
 /* USER CODE BEGIN PV */
 static uint8_t  g_team_sel          = 0;      /* 0:none, 1:red(A), 2:blue(B) */
 static uint8_t  g_matrix_state[GRID_CELL_COUNT]; /* each cell: 0=digit, 1=AR, 2=MR, 3=FAKE */
-static uint8_t  g_app_mode          = APP_MODE_TX;
+static uint8_t  g_app_mode          = DISPLAY_UI_MODE_TX;
 static uint8_t  g_reset_armed       = 0;
 static uint32_t g_reset_arm_start   = 0;      /* ms tick for first reset press */
 static uint32_t g_last_uart_sent_ms = 0;
@@ -290,14 +288,14 @@ int main(void)
   {
       uint32_t now_ms = HAL_GetTick();
 
-      if ((g_app_mode == APP_MODE_TX) &&
+      if ((g_app_mode == DISPLAY_UI_MODE_TX) &&
           (elapsed_ms(now_ms, g_last_uart_sent_ms) >= UART_FRAME_INTERVAL_MS))
       {
           send_uart_frame();
           g_last_uart_sent_ms = now_ms;
       }
 
-      if (g_app_mode == APP_MODE_RX)
+      if (g_app_mode == DISPLAY_UI_MODE_RX)
       {
           process_rx_data();
       }
@@ -321,24 +319,24 @@ int main(void)
 
               if (id == UI_TOUCH_MODE_TOGGLE)
               {
-                  g_app_mode = (g_app_mode == APP_MODE_TX) ? APP_MODE_RX : APP_MODE_TX;
+                  g_app_mode = (g_app_mode == DISPLAY_UI_MODE_TX) ? DISPLAY_UI_MODE_RX : DISPLAY_UI_MODE_TX;
                   g_reset_armed = 0;
                   g_last_uart_sent_ms = now_ms;
                   g_rx_line_len = 0;
                   g_rx_line[0] = '\0';
                   display_ui_set_mode(g_app_mode);
-                  if (g_app_mode == APP_MODE_RX)
+                  if (g_app_mode == DISPLAY_UI_MODE_RX)
                   {
                       display_ui_set_rx_text("Waiting for UART data...");
                   }
               }
-              else if ((g_app_mode == APP_MODE_TX) && (id >= UI_TOUCH_GRID_A && id <= UI_TOUCH_GRID_L))
+              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id >= UI_TOUCH_GRID_A && id <= UI_TOUCH_GRID_L))
               {
                   uint8_t idx = (uint8_t)(id - UI_TOUCH_GRID_A);
                   g_matrix_state[idx] = (uint8_t)((g_matrix_state[idx] + 1u) & 0x3u);
                   display_ui_set_grid_state(idx, g_matrix_state[idx]);
               }
-              else if ((g_app_mode == APP_MODE_TX) && (id == UI_TOUCH_TEAM_RED))
+              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_TEAM_RED))
               {
                   if (g_team_sel == 0)
                   {
@@ -346,7 +344,7 @@ int main(void)
                       display_ui_set_team_selection(1);
                   }
               }
-              else if ((g_app_mode == APP_MODE_TX) && (id == UI_TOUCH_TEAM_BLUE))
+              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_TEAM_BLUE))
               {
                   if (g_team_sel == 0)
                   {
@@ -354,7 +352,7 @@ int main(void)
                       display_ui_set_team_selection(2);
                   }
               }
-              else if ((g_app_mode == APP_MODE_TX) && (id == UI_TOUCH_RESET))
+              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_RESET))
               {
                   if (g_reset_armed && elapsed_ms(now_ms, g_reset_arm_start) <= RESET_ARM_TIMEOUT_MS)
                   {

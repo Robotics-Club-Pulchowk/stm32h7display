@@ -25,6 +25,7 @@ static volatile uint16_t g_usart1_rx_read_idx = 0U;
 
 static uint16_t usart1_rx_dma_write_idx(void)
 {
+    uint16_t remaining;
     uint16_t write_idx;
 
     if (huart1.hdmarx == NULL)
@@ -32,7 +33,13 @@ static uint16_t usart1_rx_dma_write_idx(void)
         return 0U;
     }
 
-    write_idx = (uint16_t)(USART1_DMA_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(huart1.hdmarx));
+    remaining = (uint16_t)__HAL_DMA_GET_COUNTER(huart1.hdmarx);
+    if (remaining > USART1_DMA_RX_BUF_SIZE)
+    {
+        remaining = USART1_DMA_RX_BUF_SIZE;
+    }
+
+    write_idx = (uint16_t)(USART1_DMA_RX_BUF_SIZE - remaining);
     if (write_idx >= USART1_DMA_RX_BUF_SIZE)
     {
         write_idx = 0U;

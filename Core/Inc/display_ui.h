@@ -11,6 +11,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define DISPLAY_UI_MODE_TX 0u
+#define DISPLAY_UI_MODE_RX 1u
+
 typedef enum
 {
     UI_TOUCH_NONE = 0,
