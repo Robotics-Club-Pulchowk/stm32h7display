@@ -27,6 +27,10 @@ typedef struct
 #define APP_MODE_TX            0u
 #define APP_MODE_RX            1u
 #define RX_TEXT_LEN            96u
+#define RX_TEXT_PADDING        16u
+#define RX_TITLE_X_OFFSET      8u
+#define RX_TITLE_Y_OFFSET      8u
+#define RX_BODY_Y_OFFSET       12u
 
 /* Section-A grid dimensions */
 #define GRID_COLS   3
@@ -119,41 +123,55 @@ static void draw_team_buttons(void)
             b.text_color = WHITE;
         }
 
-        static void draw_mode_button(void)
-        {
-            button_t b = sec_mode;
-
-            if (app_mode == APP_MODE_RX)
-            {
-                b.fill_color = BLACK;
-                b.text_color = WHITE;
-                b.label = "Mode: RX";
-            }
-            else
-            {
-                b.fill_color = WHITE;
-                b.text_color = BLACK;
-                b.label = "Mode: TX";
-            }
-
-            draw_button(&b);
-        }
-
-        static void draw_rx_area(void)
-        {
-            uint16_t rx_w = (uint16_t)(rx_area_x2 - rx_area_x1 + 1u);
-            uint16_t rx_h = (uint16_t)(rx_area_y2 - rx_area_y1 + 1u);
-            uint16_t text_w = (uint16_t)(rx_w > 16u ? rx_w - 16u : rx_w);
-            uint16_t text_h = (uint16_t)(rx_h > (FONT_SIZE + 16u) ? rx_h - (FONT_SIZE + 16u) : FONT_SIZE);
-
-            lcd_fill(rx_area_x1, rx_area_y1, rx_area_x2, rx_area_y2, BLACK);
-            g_back_color = BLACK;
-            lcd_show_string((uint16_t)(rx_area_x1 + 8u), (uint16_t)(rx_area_y1 + 8u), text_w, FONT_SIZE, FONT_SIZE, (char *)"RX MODE", GREEN);
-            lcd_show_string((uint16_t)(rx_area_x1 + 8u), (uint16_t)(rx_area_y1 + FONT_SIZE + 12u), text_w, text_h, 16, rx_text, WHITE);
-        }
-
         draw_button(&b);
     }
+}
+
+static void draw_mode_button(void)
+{
+    button_t b = sec_mode;
+
+    if (app_mode == APP_MODE_RX)
+    {
+        b.fill_color = BLACK;
+        b.text_color = WHITE;
+        b.label = "Mode: RX";
+    }
+    else
+    {
+        b.fill_color = WHITE;
+        b.text_color = BLACK;
+        b.label = "Mode: TX";
+    }
+
+    draw_button(&b);
+}
+
+static void draw_rx_area(void)
+{
+    uint16_t rx_w;
+    uint16_t rx_h;
+    uint16_t text_w;
+    uint16_t text_h;
+
+    if ((rx_area_x2 < rx_area_x1) || (rx_area_y2 < rx_area_y1))
+    {
+        return;
+    }
+
+    rx_w = (uint16_t)(rx_area_x2 - rx_area_x1 + 1u);
+    rx_h = (uint16_t)(rx_area_y2 - rx_area_y1 + 1u);
+    text_w = (uint16_t)(rx_w > RX_TEXT_PADDING ? rx_w - RX_TEXT_PADDING : rx_w);
+    text_h = (uint16_t)(rx_h > (FONT_SIZE + RX_TEXT_PADDING) ? rx_h - (FONT_SIZE + RX_TEXT_PADDING) : FONT_SIZE);
+
+    lcd_fill(rx_area_x1, rx_area_y1, rx_area_x2, rx_area_y2, BLACK);
+    g_back_color = BLACK;
+    lcd_show_string((uint16_t)(rx_area_x1 + RX_TITLE_X_OFFSET),
+                    (uint16_t)(rx_area_y1 + RX_TITLE_Y_OFFSET),
+                    text_w, FONT_SIZE, FONT_SIZE, (char *)"RX MODE", GREEN);
+    lcd_show_string((uint16_t)(rx_area_x1 + RX_TITLE_X_OFFSET),
+                    (uint16_t)(rx_area_y1 + FONT_SIZE + RX_BODY_Y_OFFSET),
+                    text_w, text_h, 16, rx_text, WHITE);
 }
 
 void display_ui_init(void)
@@ -185,12 +203,12 @@ void display_ui_init(void)
             strncpy(grid[idx].label, grid_labels[idx], sizeof(grid[idx].label) - 1);
             grid[idx].label[sizeof(grid[idx].label) - 1] = '\0';
         }
-
-        rx_area_x1 = (uint16_t)(ax1 + CELL_PAD);
-        rx_area_y1 = CELL_PAD;
-        rx_area_x2 = (uint16_t)(w - 1u - CELL_PAD);
-        rx_area_y2 = (uint16_t)(h - 1u - CELL_PAD);
     }
+
+    rx_area_x1 = (uint16_t)(ax1 + CELL_PAD);
+    rx_area_y1 = CELL_PAD;
+    rx_area_x2 = (uint16_t)(w - 1u - CELL_PAD);
+    rx_area_y2 = (uint16_t)(h - 1u - CELL_PAD);
 
     /* ── Section B  (top-left quarter) ───────────────────────────────── */
     uint16_t bw     = midx;
