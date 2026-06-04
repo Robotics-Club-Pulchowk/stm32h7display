@@ -56,7 +56,8 @@
 #define RESET_ARM_TIMEOUT_MS     1000u
 #define GRID_CELL_COUNT            12u
 #define UART_FRAME_MAX_LEN         41u  /* team(2) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
-#define UART_RX_LINE_MAX           96u  /* includes NUL terminator; payload bytes are UART_RX_LINE_MAX-1 */
+#define UART_RX_LINE_MAX           96u  /* includes NUL terminator; max payload is 95 bytes */
+#define UART_RX_PAYLOAD_MAX        (UART_RX_LINE_MAX - 1u)
 
 /* USER CODE END PD */
 
@@ -221,7 +222,7 @@ static void process_rx_data(void)
             continue;
         }
 
-        if (g_rx_line_len >= (UART_RX_LINE_MAX - 1u))
+        if (g_rx_line_len >= UART_RX_PAYLOAD_MAX)
         {
             flush_rx_line_to_ui();
             g_rx_line_len = 0;

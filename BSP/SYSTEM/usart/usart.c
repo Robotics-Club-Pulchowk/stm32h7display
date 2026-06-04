@@ -34,6 +34,7 @@ static uint16_t usart1_rx_dma_write_idx(void)
     }
 
     remaining = (uint16_t)__HAL_DMA_GET_COUNTER(huart1.hdmarx);
+    /* Defensive clamp in case DMA NDTR is sampled during transient hardware update. */
     if (remaining > USART1_DMA_RX_BUF_SIZE)
     {
         remaining = USART1_DMA_RX_BUF_SIZE;
@@ -284,6 +285,7 @@ char usart1_recv_char(void)
     uint32_t deadline = HAL_GetTick() + USART1_RECV_BLOCK_TIMEOUT_MS;
     while (usart1_rx_dma_read(&ch, 1U) == 0U)
     {
+        /* Signed delta comparison keeps timeout check safe across HAL tick wraparound. */
         if ((int32_t)(HAL_GetTick() - deadline) >= 0)
         {
             return '\0';

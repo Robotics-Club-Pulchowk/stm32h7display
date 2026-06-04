@@ -154,6 +154,7 @@ static void draw_rx_area(void)
 
     if ((rx_area_x2 < rx_area_x1) || (rx_area_y2 < rx_area_y1))
     {
+        /* Coordinates are pre-clamped in init; keep this as a final runtime safety guard. */
         return;
     }
 
@@ -161,6 +162,10 @@ static void draw_rx_area(void)
     rx_h = (uint16_t)(rx_area_y2 - rx_area_y1 + 1u);
     text_w = (uint16_t)(rx_w > RX_TEXT_PADDING ? rx_w - RX_TEXT_PADDING : rx_w);
     text_h = (uint16_t)(rx_h > (FONT_SIZE + RX_TEXT_PADDING) ? rx_h - (FONT_SIZE + RX_TEXT_PADDING) : FONT_SIZE);
+    if ((text_w < 8u) || (text_h < FONT_SIZE))
+    {
+        return;
+    }
 
     lcd_fill(rx_area_x1, rx_area_y1, rx_area_x2, rx_area_y2, BLACK);
     g_back_color = BLACK;
