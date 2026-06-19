@@ -5,13 +5,17 @@
   * @brief          : Main program body — three-section touch UI
   *
  * Layout (landscape):
- *   +----------+---------------------+
- *   |    B     |                     |
- *   | Red Blue |      A (3×4)        |
- *   +----------+  Green grid 1–12    |
- *   |    C     |                     |
- *   |  Reset   |                     |
- *   +----------+---------------------+
+ *   +-----------+---------------------+
+ *   |     B     |                     |
+ *   | Team Mode |      A (3×4)        |
+ *   +-----------+  Green grid 1–12    |
+ *   |     C     |  (cells recolor to  |
+ *   |   Reset   |   AR/MR/FAKE)       |
+ *   +-----------+---------------------+
+ *
+ * Section B: left button toggles Red/Blue team (locks after first touch
+ * until Reset); right button (the "scroll" button) cycles AR -> MR -> FAKE
+ * and sets which state any touched Section-A cell will take on.
  *
  * Touching any cell/button updates UI state; UART sends periodic state frames.
   ******************************************************************************
@@ -55,9 +59,16 @@
 #define UART_FRAME_INTERVAL_MS   1000u
 #define RESET_ARM_TIMEOUT_MS     1000u
 #define GRID_CELL_COUNT            12u
-#define UART_FRAME_MAX_LEN         43u  /* team(2) + space(1) + screen_cam(1) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
+#define UART_FRAME_MAX_LEN         42u  /* team(1) + space(1) + screen_cam(1) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
 #define UART_RX_LINE_MAX           96u  /* includes NUL terminator; max payload is 95 bytes */
 #define UART_RX_PAYLOAD_MAX        (UART_RX_LINE_MAX - 1u)
+
+/* Maximum number of Section-A cells allowed to hold each mode at once.
+ * A tap that would exceed a mode's limit is ignored; free a cell of that
+ * mode first (revert it via double-tap, or change it to another mode). */
+#define MAX_AR_CELLS               4u
+#define MAX_MR_CELLS               3u
+#define MAX_FAKE_CELLS             1u
 
 /* USER CODE END PD */
 
@@ -69,12 +80,16 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-static uint8_t  g_team_sel          = 0;      /* 0:none, 1:red(A), 2:blue(B) */
+static uint8_t  g_team_sel          = DISPLAY_UI_TEAM_RED; /* 0:red (default), 1:blue */
+static uint8_t  g_team_locked       = 0;      /* set on first touch of the team button; cleared on reset */
+static uint8_t  g_scroll_mode       = DISPLAY_UI_SCROLL_AR; /* 1:AR, 2:MR, 3:FAKE — applied to grid cells on touch */
 static uint8_t  g_screen_cam_sel    = 0;      /* 0:camera (default), 1:screen */
 static uint8_t  g_matrix_state[GRID_CELL_COUNT]; /* each cell: 0=digit, 1=AR, 2=MR, 3=FAKE */
 static uint8_t  g_app_mode          = DISPLAY_UI_MODE_TX;
 static uint8_t  g_reset_armed       = 0;
 static uint32_t g_reset_arm_start   = 0;      /* ms tick for first reset press */
+static uint8_t  g_cell_armed[GRID_CELL_COUNT];       /* per-cell double-tap arm flag */
+static uint32_t g_cell_arm_start[GRID_CELL_COUNT];   /* ms tick for first tap on that cell */
 static uint32_t g_last_uart_sent_ms = 0;
 static char     g_rx_line[UART_RX_LINE_MAX];
 static uint8_t  g_rx_line_len       = 0;
@@ -96,9 +111,13 @@ static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] = {11u, 10u, 9u, 8u, 7u,
 /* USER CODE BEGIN 0 */
 static void reset_all_state(void)
 {
-    g_team_sel        = 0;
+    g_team_sel        = DISPLAY_UI_TEAM_RED;
+    g_team_locked     = 0;
+    g_scroll_mode     = DISPLAY_UI_SCROLL_AR;
     g_screen_cam_sel  = 0;
     memset(g_matrix_state, 0, sizeof(g_matrix_state));
+    memset(g_cell_armed, 0, sizeof(g_cell_armed));
+    memset(g_cell_arm_start, 0, sizeof(g_cell_arm_start));
     g_reset_armed     = 0;
     g_reset_arm_start = 0;
 
@@ -110,6 +129,34 @@ static uint32_t elapsed_ms(uint32_t now, uint32_t then)
 {
     /* Unsigned subtraction is wrap-safe for HAL tick comparisons. */
     return now - then;
+}
+
+static uint8_t count_cells_in_mode(uint8_t mode)
+{
+    uint8_t count = 0;
+
+    for (uint8_t i = 0; i < GRID_CELL_COUNT; i++)
+    {
+        if (g_matrix_state[i] == mode)
+        {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+static uint8_t mode_limit(uint8_t mode)
+{
+    if (mode == DISPLAY_UI_SCROLL_AR)   return MAX_AR_CELLS;
+    if (mode == DISPLAY_UI_SCROLL_MR)   return MAX_MR_CELLS;
+    if (mode == DISPLAY_UI_SCROLL_FAKE) return MAX_FAKE_CELLS;
+    return 0u;
+}
+
+static uint8_t mode_slot_available(uint8_t mode)
+{
+    return (count_cells_in_mode(mode) < mode_limit(mode)) ? 1u : 0u;
 }
 
 static uint8_t frame_append_char(char *frame, size_t frame_len, size_t *off, char ch)
@@ -138,21 +185,12 @@ static uint8_t frame_append_bits(char *frame, size_t frame_len, size_t *off, con
 
 static void send_uart_frame(void)
 {
-    const char *team_bits = "00";
     char frame[UART_FRAME_MAX_LEN];
     size_t off = 0;
-
-    if (g_team_sel == 1)
-    {
-        team_bits = "01";
-    }
-    else if (g_team_sel == 2)
-    {
-        team_bits = "10";
-    }
+    char team_bit = (g_team_sel == DISPLAY_UI_TEAM_BLUE) ? '1' : '0';
 
     frame[0] = '\0';
-    if (!frame_append_bits(frame, sizeof(frame), &off, team_bits))
+    if (!frame_append_char(frame, sizeof(frame), &off, team_bit))
     {
         return;
     }
@@ -314,6 +352,14 @@ int main(void)
           g_reset_armed = 0;
       }
 
+      for (uint8_t ci = 0; ci < GRID_CELL_COUNT; ci++)
+      {
+          if (g_cell_armed[ci] && elapsed_ms(now_ms, g_cell_arm_start[ci]) > RESET_ARM_TIMEOUT_MS)
+          {
+              g_cell_armed[ci] = 0;
+          }
+      }
+
       tp_dev.scan(0);
 
       if (tp_dev.sta & TP_PRES_DOWN)
@@ -342,24 +388,59 @@ int main(void)
               else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id >= UI_TOUCH_GRID_A && id <= UI_TOUCH_GRID_L))
               {
                   uint8_t idx = (uint8_t)(id - UI_TOUCH_GRID_A);
-                  g_matrix_state[idx] = (uint8_t)((g_matrix_state[idx] + 1u) & 0x3u);
-                  display_ui_set_grid_state(idx, g_matrix_state[idx]);
-              }
-              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_TEAM_RED))
-              {
-                  if (g_team_sel == 0)
+
+                  if (g_matrix_state[idx] != 0u)
                   {
-                      g_team_sel = 1;
-                      display_ui_set_team_selection(1);
+                      /* Cell already AR/MR/FAKE: a quick second tap reverts it to its number;
+                       * otherwise this tap just arms the revert window. */
+                      if (g_cell_armed[idx] && elapsed_ms(now_ms, g_cell_arm_start[idx]) <= RESET_ARM_TIMEOUT_MS)
+                      {
+                          g_matrix_state[idx] = 0u;
+                          g_cell_armed[idx] = 0;
+                          display_ui_set_grid_state(idx, g_matrix_state[idx]);
+                      }
+                      else
+                      {
+                          g_cell_armed[idx] = 1;
+                          g_cell_arm_start[idx] = now_ms;
+                      }
+                  }
+                  else
+                  {
+                      /* Plain numbered cell: a single tap sets it to the current scroll mode,
+                       * but only if that mode still has a free slot. */
+                      if (mode_slot_available(g_scroll_mode))
+                      {
+                          g_matrix_state[idx] = g_scroll_mode;
+                          g_cell_armed[idx] = 0;
+                          display_ui_set_grid_state(idx, g_matrix_state[idx]);
+                      }
                   }
               }
-              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_TEAM_BLUE))
+              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_TEAM_TOGGLE))
               {
-                  if (g_team_sel == 0)
+                  if (!g_team_locked)
                   {
-                      g_team_sel = 2;
-                      display_ui_set_team_selection(2);
+                      g_team_sel = (g_team_sel == DISPLAY_UI_TEAM_RED) ? DISPLAY_UI_TEAM_BLUE : DISPLAY_UI_TEAM_RED;
+                      g_team_locked = 1;
+                      display_ui_set_team_selection(g_team_sel);
                   }
+              }
+              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_SCROLL_MODE))
+              {
+                  if (g_scroll_mode == DISPLAY_UI_SCROLL_AR)
+                  {
+                      g_scroll_mode = DISPLAY_UI_SCROLL_MR;
+                  }
+                  else if (g_scroll_mode == DISPLAY_UI_SCROLL_MR)
+                  {
+                      g_scroll_mode = DISPLAY_UI_SCROLL_FAKE;
+                  }
+                  else
+                  {
+                      g_scroll_mode = DISPLAY_UI_SCROLL_AR;
+                  }
+                  display_ui_set_scroll_mode(g_scroll_mode);
               }
               else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_SCREEN_CAM))
               {

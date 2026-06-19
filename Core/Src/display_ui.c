@@ -22,9 +22,7 @@ typedef struct
 #define BORDER_W    2    /* width of the white section-divider lines (px) */
 #define CELL_PAD    3    /* black gap around each cell / button (px) */
 #define FONT_SIZE   24   /* character height used throughout */
-#define RESET_HEIGHT_RATIO_DEN 5u  /* reset height = available section-C height / 5 */
-#define MODE_HEIGHT_RATIO_DEN  5u
-#define SCREEN_CAM_HEIGHT_RATIO_DEN 5u  /* screen/cam height = available section-C height / 5 */
+#define SEC_C_VGAP_RATIO_DEN  10u  /* vertical gap between section-C buttons = avail_h / 10 */
 #define RX_MODE_BTN_HEIGHT_RATIO_DEN 8u  /* RX-mode toggle button height = screen height / 8 */
 #define RX_TEXT_LEN            96u
 #define RX_TEXT_PADDING        16u
@@ -37,11 +35,14 @@ typedef struct
 #define GRID_ROWS   4
 #define GRID_CELLS  (GRID_COLS * GRID_ROWS)   /* 12 */
 
-/* Section-B button count */
-#define SEC_B_CNT   2
+/* Colors used for the AR / MR / FAKE block states (kept distinct from RED/BLUE/GREEN/BLACK/WHITE) */
+#define COLOR_AR    BROWN
+#define COLOR_MR    MAGENTA
+#define COLOR_FAKE  BLACK
 
 static grid_cell_t grid[GRID_CELLS];
-static button_t    sec_b[SEC_B_CNT];
+static button_t    sec_team;       /* single Red/Blue toggle button (Section B) */
+static button_t    sec_scroll;     /* single AR/MR/FAKE toggle button (Section B) */
 static button_t    sec_reset;
 static button_t    sec_mode;
 static button_t    sec_screen_cam;
@@ -55,7 +56,8 @@ static const char *grid_labels[GRID_CELLS] =
 };
 
 static uint8_t     grid_state[GRID_CELLS]; /* 0:number, 1:AR, 2:MR, 3:FAKE */
-static uint8_t     team_selected;     /* 0:none, 1:red, 2:blue */
+static uint8_t     team_selected;     /* 0:red (default), 1:blue */
+static uint8_t     scroll_mode = DISPLAY_UI_SCROLL_AR;  /* 1:AR, 2:MR, 3:FAKE */
 static uint8_t     screen_cam_sel;    /* 0:camera (default), 1:screen */
 static uint8_t     app_mode = DISPLAY_UI_MODE_TX;
 static char        rx_text[RX_TEXT_LEN] = "Waiting for UART data...";
@@ -88,18 +90,26 @@ static void draw_grid_idx(uint8_t idx)
     uint16_t text_w;
     uint16_t tx;
     uint16_t ty;
+    uint32_t fill_color = GREEN;
+    uint32_t text_color = BLACK;
 
     if (grid_state[idx] == 1u)
     {
         label = "AR";
+        fill_color = COLOR_AR;
+        text_color = WHITE;
     }
     else if (grid_state[idx] == 2u)
     {
         label = "MR";
+        fill_color = COLOR_MR;
+        text_color = WHITE;
     }
     else if (grid_state[idx] == 3u)
     {
         label = "FAKE";
+        fill_color = COLOR_FAKE;
+        text_color = WHITE;
     }
 
     text_w = (uint16_t)(strlen(label) * (FONT_SIZE / 2));
@@ -107,27 +117,45 @@ static void draw_grid_idx(uint8_t idx)
     tx = (uint16_t)(grid[idx].x1 + (bw - text_w) / 2);
     ty = (uint16_t)(grid[idx].y1 + (bh - FONT_SIZE) / 2);
 
-    lcd_fill(grid[idx].x1, grid[idx].y1, grid[idx].x2, grid[idx].y2, GREEN);
-    g_back_color = GREEN;
-    lcd_show_string(tx, ty, text_w, FONT_SIZE, FONT_SIZE, (char *)label, BLACK);
+    lcd_fill(grid[idx].x1, grid[idx].y1, grid[idx].x2, grid[idx].y2, fill_color);
+    g_back_color = fill_color;
+    lcd_show_string(tx, ty, text_w, FONT_SIZE, FONT_SIZE, (char *)label, text_color);
 }
 
-static void draw_team_buttons(void)
+static void draw_team_button(void)
 {
-    button_t b;
+    button_t b = sec_team;
 
-    for (uint8_t i = 0; i < SEC_B_CNT; i++)
+    b.fill_color = (team_selected == DISPLAY_UI_TEAM_BLUE) ? BLUE : RED;
+    b.text_color = WHITE;
+    b.label      = (team_selected == DISPLAY_UI_TEAM_BLUE) ? "Blue" : "Red";
+
+    draw_button(&b);
+}
+
+static void draw_scroll_button(void)
+{
+    button_t b = sec_scroll;
+
+    if (scroll_mode == DISPLAY_UI_SCROLL_MR)
     {
-        b = sec_b[i];
-
-        if ((team_selected == 1 && i == 0) || (team_selected == 2 && i == 1))
-        {
-            b.fill_color = BLACK;
-            b.text_color = WHITE;
-        }
-
-        draw_button(&b);
+        b.fill_color = COLOR_MR;
+        b.label      = "MR";
     }
+    else if (scroll_mode == DISPLAY_UI_SCROLL_FAKE)
+    {
+        b.fill_color = COLOR_FAKE;
+        b.label      = "FAKE";
+    }
+    else
+    {
+        b.fill_color = COLOR_AR;
+        b.label      = "AR";
+    }
+
+    b.text_color = WHITE;
+
+    draw_button(&b);
 }
 
 static void draw_mode_button(void)
@@ -241,81 +269,68 @@ void display_ui_init(void)
     uint16_t sq     = (uint16_t)((half_w < bh ? half_w : bh) - 2 * CELL_PAD);
     uint16_t bvy    = (uint16_t)((bh - sq) / 2);  /* vertical offset to centre */
 
-    sec_b[0].x1         = (uint16_t)(0 + CELL_PAD);
-    sec_b[0].y1         = bvy;
-    sec_b[0].x2         = (uint16_t)(half_w - 1 - CELL_PAD);
-    sec_b[0].y2         = (uint16_t)(bvy + sq - 1);
-    sec_b[0].fill_color = RED;
-    sec_b[0].text_color = WHITE;
-    sec_b[0].label      = "Red";
+    sec_team.x1         = (uint16_t)(0 + CELL_PAD);
+    sec_team.y1         = bvy;
+    sec_team.x2         = (uint16_t)(half_w - 1 - CELL_PAD);
+    sec_team.y2         = (uint16_t)(bvy + sq - 1);
+    sec_team.fill_color = RED;
+    sec_team.text_color = WHITE;
+    sec_team.label      = "Red";
 
-    sec_b[1].x1         = (uint16_t)(half_w + CELL_PAD);
-    sec_b[1].y1         = bvy;
-    sec_b[1].x2         = (uint16_t)(bw - 1 - CELL_PAD);
-    sec_b[1].y2         = (uint16_t)(bvy + sq - 1);
-    sec_b[1].fill_color = BLUE;
-    sec_b[1].text_color = WHITE;
-    sec_b[1].label      = "Blue";
+    sec_scroll.x1         = (uint16_t)(half_w + CELL_PAD);
+    sec_scroll.y1         = bvy;
+    sec_scroll.x2         = (uint16_t)(bw - 1 - CELL_PAD);
+    sec_scroll.y2         = (uint16_t)(bvy + sq - 1);
+    sec_scroll.fill_color = COLOR_AR;
+    sec_scroll.text_color = WHITE;
+    sec_scroll.label      = "AR";
 
     /* ── Section C  (bottom-left quarter) ────────────────────────────── */
-    uint16_t cy1         = (uint16_t)(midy + BORDER_W);
-    uint16_t cw2         = midx;
-    uint16_t ch2         = (uint16_t)(h - cy1);
-    uint16_t inner_top   = (uint16_t)(cy1 + CELL_PAD);
-    uint16_t avail_h     = (uint16_t)(ch2 > 2 * CELL_PAD ? (ch2 - 2 * CELL_PAD) : 1);
-    uint16_t reset_h     = (uint16_t)(avail_h / RESET_HEIGHT_RATIO_DEN);
-    uint16_t mode_h      = (uint16_t)(avail_h / MODE_HEIGHT_RATIO_DEN);
-    uint16_t mode_y2     = (uint16_t)(cy1 + ch2 - 1u - CELL_PAD);
-    if (reset_h == 0) reset_h = 1;
-    if (mode_h == 0) mode_h = 1;
+    /* Three equal-height buttons (Reset, Screen/Cam, Mode) separated by
+     * generous, equal vertical gaps for a cleaner, more accessible layout. */
+    uint16_t cy1       = (uint16_t)(midy + BORDER_W);
+    uint16_t cw2       = midx;
+    uint16_t ch2       = (uint16_t)(h - cy1);
+    uint16_t inner_top = (uint16_t)(cy1 + CELL_PAD);
+    uint16_t avail_h   = (uint16_t)(ch2 > 2 * CELL_PAD ? (ch2 - 2 * CELL_PAD) : 1);
+
+    uint16_t vgap = (uint16_t)(avail_h / SEC_C_VGAP_RATIO_DEN);
+    if (vgap == 0) vgap = 1;
+
+    /* 3 buttons + 4 gaps (top, between-1-2, between-2-3, bottom) share avail_h */
+    uint16_t btn_h_num = (uint16_t)(avail_h > (4u * vgap) ? (avail_h - 4u * vgap) : 3u);
+    uint16_t btn_h     = (uint16_t)(btn_h_num / 3u);
+    if (btn_h == 0) btn_h = 1;
+
+    uint16_t y_cursor = (uint16_t)(inner_top + vgap);
 
     sec_reset.x1         = CELL_PAD;
-    sec_reset.y1         = (uint16_t)(inner_top + (avail_h - reset_h) / 2);
     sec_reset.x2         = (uint16_t)(cw2 - 1 - CELL_PAD);
-    sec_reset.y2         = (uint16_t)(sec_reset.y1 + reset_h - 1);
+    sec_reset.y1         = y_cursor;
+    sec_reset.y2         = (uint16_t)(y_cursor + btn_h - 1u);
     sec_reset.fill_color = WHITE;
     sec_reset.text_color = BLACK;
     sec_reset.label      = "Reset";
 
+    y_cursor = (uint16_t)(sec_reset.y2 + 1u + vgap);
+
+    sec_screen_cam.x1         = CELL_PAD;
+    sec_screen_cam.x2         = (uint16_t)(cw2 - 1u - CELL_PAD);
+    sec_screen_cam.y1         = y_cursor;
+    sec_screen_cam.y2         = (uint16_t)(y_cursor + btn_h - 1u);
+    sec_screen_cam.fill_color = WHITE;
+    sec_screen_cam.text_color = BLACK;
+    sec_screen_cam.label      = "Cam";
+
+    y_cursor = (uint16_t)(sec_screen_cam.y2 + 1u + vgap);
+
     sec_mode.x1          = CELL_PAD;
-    sec_mode.y2          = mode_y2;
-    sec_mode.y1          = (uint16_t)(mode_y2 >= (mode_h - 1u) ? (mode_y2 - mode_h + 1u) : mode_y2);
     sec_mode.x2          = (uint16_t)(cw2 - 1u - CELL_PAD);
+    sec_mode.y1          = y_cursor;
+    sec_mode.y2          = (uint16_t)(y_cursor + btn_h - 1u);
     sec_mode.fill_color  = WHITE;
     sec_mode.text_color  = BLACK;
     sec_mode.label       = "Mode: TX";
-
-    /* ── Screen/Cam toggle (TX only) — fills the empty gap between Reset and Mode ── */
-    {
-        uint16_t sc_gap_top    = (uint16_t)(sec_reset.y2 + 1u + CELL_PAD);
-        uint16_t sc_gap_bottom = (uint16_t)((sec_mode.y1 > (CELL_PAD + 1u)) ? (sec_mode.y1 - 1u - CELL_PAD) : sec_mode.y1);
-        uint16_t sc_h          = (uint16_t)(avail_h / SCREEN_CAM_HEIGHT_RATIO_DEN);
-        if (sc_h == 0) sc_h = 1;
-
-        if (sc_gap_bottom > sc_gap_top)
-        {
-            uint16_t sc_gap_h = (uint16_t)(sc_gap_bottom - sc_gap_top + 1u);
-            uint16_t sc_y1;
-
-            if (sc_h > sc_gap_h) sc_h = sc_gap_h;
-            sc_y1 = (uint16_t)(sc_gap_top + (sc_gap_h - sc_h) / 2u);
-
-            sec_screen_cam.y1 = sc_y1;
-            sec_screen_cam.y2 = (uint16_t)(sc_y1 + sc_h - 1u);
-        }
-        else
-        {
-            /* Fallback for very short screens: collapse to a thin strip just above Mode. */
-            sec_screen_cam.y2 = (uint16_t)((sec_mode.y1 >= 2u) ? (sec_mode.y1 - 1u) : sec_mode.y1);
-            sec_screen_cam.y1 = sec_screen_cam.y2;
-        }
-
-        sec_screen_cam.x1         = CELL_PAD;
-        sec_screen_cam.x2         = (uint16_t)(cw2 - 1u - CELL_PAD);
-        sec_screen_cam.fill_color = WHITE;
-        sec_screen_cam.text_color = BLACK;
-        sec_screen_cam.label      = "Cam";
-    }
 
     display_ui_reset_visual_state();
 }
@@ -342,7 +357,8 @@ void display_ui_draw(void)
                  WHITE);
 
         for (uint8_t i = 0; i < GRID_CELLS; i++) draw_grid_idx(i);
-        draw_team_buttons();
+        draw_team_button();
+        draw_scroll_button();
         draw_button(&sec_reset);
         draw_screen_cam_button();
     }
@@ -369,13 +385,16 @@ ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
             }
         }
 
-        for (i = 0; i < SEC_B_CNT; i++)
+        if (x >= sec_team.x1 && x <= sec_team.x2 &&
+            y >= sec_team.y1 && y <= sec_team.y2)
         {
-            if (x >= sec_b[i].x1 && x <= sec_b[i].x2 &&
-                y >= sec_b[i].y1 && y <= sec_b[i].y2)
-            {
-                return (i == 0) ? UI_TOUCH_TEAM_RED : UI_TOUCH_TEAM_BLUE;
-            }
+            return UI_TOUCH_TEAM_TOGGLE;
+        }
+
+        if (x >= sec_scroll.x1 && x <= sec_scroll.x2 &&
+            y >= sec_scroll.y1 && y <= sec_scroll.y2)
+        {
+            return UI_TOUCH_SCROLL_MODE;
         }
 
         if (x >= sec_reset.x1 && x <= sec_reset.x2 &&
@@ -421,13 +440,26 @@ void display_ui_set_grid_state(uint8_t idx, uint8_t state)
 
 void display_ui_set_team_selection(uint8_t team)
 {
-    if (team > 2)
+    if (team > DISPLAY_UI_TEAM_BLUE)
     {
         return;
     }
 
     team_selected = team;
-    draw_team_buttons();
+    draw_team_button();
+}
+
+void display_ui_set_scroll_mode(uint8_t mode)
+{
+    if ((mode != DISPLAY_UI_SCROLL_AR) &&
+        (mode != DISPLAY_UI_SCROLL_MR) &&
+        (mode != DISPLAY_UI_SCROLL_FAKE))
+    {
+        return;
+    }
+
+    scroll_mode = mode;
+    draw_scroll_button();
 }
 
 void display_ui_set_screen_cam_selection(uint8_t mode)
@@ -448,7 +480,8 @@ void display_ui_reset_visual_state(void)
         grid_state[i] = 0;
     }
 
-    team_selected = 0;
+    team_selected = DISPLAY_UI_TEAM_RED;
+    scroll_mode = DISPLAY_UI_SCROLL_AR;
     screen_cam_sel = 0;
 }
 

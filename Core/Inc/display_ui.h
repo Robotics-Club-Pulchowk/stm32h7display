@@ -29,18 +29,28 @@ typedef enum
     UI_TOUCH_GRID_J,
     UI_TOUCH_GRID_K,
     UI_TOUCH_GRID_L,
-    UI_TOUCH_TEAM_RED,
-    UI_TOUCH_TEAM_BLUE,
+    UI_TOUCH_TEAM_TOGGLE,
+    UI_TOUCH_SCROLL_MODE,
     UI_TOUCH_RESET,
     UI_TOUCH_MODE_TOGGLE,
     UI_TOUCH_SCREEN_CAM,
 } ui_touch_id_t;
+
+/* Team selection (single bit on the wire: 0=red, 1=blue) */
+#define DISPLAY_UI_TEAM_RED  0u
+#define DISPLAY_UI_TEAM_BLUE 1u
+
+/* Scroll-button modes for Section-A blocks */
+#define DISPLAY_UI_SCROLL_AR   1u
+#define DISPLAY_UI_SCROLL_MR   2u
+#define DISPLAY_UI_SCROLL_FAKE 3u
 
 void display_ui_init(void);
 void display_ui_draw(void);
 ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y);
 void display_ui_set_grid_state(uint8_t idx, uint8_t state);
 void display_ui_set_team_selection(uint8_t team);
+void display_ui_set_scroll_mode(uint8_t mode);
 void display_ui_set_screen_cam_selection(uint8_t mode);
 void display_ui_reset_visual_state(void);
 void display_ui_set_mode(uint8_t mode);
