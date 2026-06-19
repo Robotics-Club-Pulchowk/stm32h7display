@@ -131,18 +131,9 @@ static void draw_mode_button(void)
 {
     button_t b = (app_mode == DISPLAY_UI_MODE_RX) ? rx_mode_btn : sec_mode;
 
-    if (app_mode == DISPLAY_UI_MODE_RX)
-    {
-        b.fill_color = BLACK;
-        b.text_color = WHITE;
-        b.label = "Mode: RX";
-    }
-    else
-    {
-        b.fill_color = WHITE;
-        b.text_color = BLACK;
-        b.label = "Mode: TX";
-    }
+    b.fill_color = WHITE;
+    b.text_color = BLACK;
+    b.label = (app_mode == DISPLAY_UI_MODE_RX) ? "Mode: RX" : "Mode: TX";
 
     draw_button(&b);
 }
