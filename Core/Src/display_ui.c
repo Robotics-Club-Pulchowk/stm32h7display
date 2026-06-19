@@ -24,6 +24,7 @@ typedef struct
 #define FONT_SIZE   24   /* character height used throughout */
 #define RESET_HEIGHT_RATIO_DEN 5u  /* reset height = available section-C height / 5 */
 #define MODE_HEIGHT_RATIO_DEN  5u
+#define RX_MODE_BTN_HEIGHT_RATIO_DEN 8u  /* RX-mode toggle button height = screen height / 8 */
 #define RX_TEXT_LEN            96u
 #define RX_TEXT_PADDING        16u
 #define RX_TITLE_X_OFFSET      8u
@@ -42,6 +43,7 @@ static grid_cell_t grid[GRID_CELLS];
 static button_t    sec_b[SEC_B_CNT];
 static button_t    sec_reset;
 static button_t    sec_mode;
+static button_t    rx_mode_btn;
 static const char *grid_labels[GRID_CELLS] =
 {
     "12", "11", "10",
@@ -127,7 +129,7 @@ static void draw_team_buttons(void)
 
 static void draw_mode_button(void)
 {
-    button_t b = sec_mode;
+    button_t b = (app_mode == DISPLAY_UI_MODE_RX) ? rx_mode_btn : sec_mode;
 
     if (app_mode == DISPLAY_UI_MODE_RX)
     {
@@ -208,10 +210,22 @@ void display_ui_init(void)
         }
     }
 
-    rx_area_x1 = (uint16_t)(ax1 + CELL_PAD);
+    /* ── RX layout (full screen, toggle button pinned to the bottom) ──── */
+    uint16_t rx_btn_h = (uint16_t)(h / RX_MODE_BTN_HEIGHT_RATIO_DEN);
+    if (rx_btn_h == 0) rx_btn_h = 1;
+
+    rx_mode_btn.x1         = CELL_PAD;
+    rx_mode_btn.y2         = (uint16_t)(h - 1u - CELL_PAD);
+    rx_mode_btn.y1         = (uint16_t)(rx_mode_btn.y2 - rx_btn_h + 1u);
+    rx_mode_btn.x2         = (uint16_t)(w - 1u - CELL_PAD);
+    rx_mode_btn.fill_color = WHITE;
+    rx_mode_btn.text_color = BLACK;
+    rx_mode_btn.label      = "Mode: RX";
+
+    rx_area_x1 = CELL_PAD;
     rx_area_y1 = CELL_PAD;
     rx_area_x2 = (uint16_t)(w - 1u - CELL_PAD);
-    rx_area_y2 = (uint16_t)(h - 1u - CELL_PAD);
+    rx_area_y2 = (uint16_t)(rx_mode_btn.y1 - 1u - CELL_PAD);
     if (rx_area_x2 < rx_area_x1) rx_area_x2 = rx_area_x1;
     if (rx_area_y2 < rx_area_y1) rx_area_y2 = rx_area_y1;
 
@@ -271,25 +285,25 @@ void display_ui_init(void)
 
 void display_ui_draw(void)
 {
-    uint16_t w    = lcddev.width;
-    uint16_t h    = lcddev.height;
-    uint16_t midx = (uint16_t)(w / 2);
-    uint16_t midy = (uint16_t)(h / 2);
-
     lcd_clear(BLACK);
-
-    lcd_fill(midx, 0,
-             (uint16_t)(midx + BORDER_W - 1),
-             (uint16_t)(h - 1),
-             WHITE);
-
-    lcd_fill(0, midy,
-             (uint16_t)(midx - 1),
-             (uint16_t)(midy + BORDER_W - 1),
-             WHITE);
 
     if (app_mode == DISPLAY_UI_MODE_TX)
     {
+        uint16_t w    = lcddev.width;
+        uint16_t h    = lcddev.height;
+        uint16_t midx = (uint16_t)(w / 2);
+        uint16_t midy = (uint16_t)(h / 2);
+
+        lcd_fill(midx, 0,
+                 (uint16_t)(midx + BORDER_W - 1),
+                 (uint16_t)(h - 1),
+                 WHITE);
+
+        lcd_fill(0, midy,
+                 (uint16_t)(midx - 1),
+                 (uint16_t)(midy + BORDER_W - 1),
+                 WHITE);
+
         for (uint8_t i = 0; i < GRID_CELLS; i++) draw_grid_idx(i);
         draw_team_buttons();
         draw_button(&sec_reset);
@@ -306,34 +320,45 @@ ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
 {
     uint8_t i;
 
-    for (i = 0; i < GRID_CELLS; i++)
+    if (app_mode == DISPLAY_UI_MODE_TX)
     {
-        if (x >= grid[i].x1 && x <= grid[i].x2 &&
-            y >= grid[i].y1 && y <= grid[i].y2)
+        for (i = 0; i < GRID_CELLS; i++)
         {
-            return (ui_touch_id_t)(UI_TOUCH_GRID_A + i);
+            if (x >= grid[i].x1 && x <= grid[i].x2 &&
+                y >= grid[i].y1 && y <= grid[i].y2)
+            {
+                return (ui_touch_id_t)(UI_TOUCH_GRID_A + i);
+            }
+        }
+
+        for (i = 0; i < SEC_B_CNT; i++)
+        {
+            if (x >= sec_b[i].x1 && x <= sec_b[i].x2 &&
+                y >= sec_b[i].y1 && y <= sec_b[i].y2)
+            {
+                return (i == 0) ? UI_TOUCH_TEAM_RED : UI_TOUCH_TEAM_BLUE;
+            }
+        }
+
+        if (x >= sec_reset.x1 && x <= sec_reset.x2 &&
+            y >= sec_reset.y1 && y <= sec_reset.y2)
+        {
+            return UI_TOUCH_RESET;
+        }
+
+        if (x >= sec_mode.x1 && x <= sec_mode.x2 &&
+            y >= sec_mode.y1 && y <= sec_mode.y2)
+        {
+            return UI_TOUCH_MODE_TOGGLE;
         }
     }
-
-    for (i = 0; i < SEC_B_CNT; i++)
+    else
     {
-        if (x >= sec_b[i].x1 && x <= sec_b[i].x2 &&
-            y >= sec_b[i].y1 && y <= sec_b[i].y2)
+        if (x >= rx_mode_btn.x1 && x <= rx_mode_btn.x2 &&
+            y >= rx_mode_btn.y1 && y <= rx_mode_btn.y2)
         {
-            return (i == 0) ? UI_TOUCH_TEAM_RED : UI_TOUCH_TEAM_BLUE;
+            return UI_TOUCH_MODE_TOGGLE;
         }
-    }
-
-    if (x >= sec_reset.x1 && x <= sec_reset.x2 &&
-        y >= sec_reset.y1 && y <= sec_reset.y2)
-    {
-        return UI_TOUCH_RESET;
-    }
-
-    if (x >= sec_mode.x1 && x <= sec_mode.x2 &&
-        y >= sec_mode.y1 && y <= sec_mode.y2)
-    {
-        return UI_TOUCH_MODE_TOGGLE;
     }
 
     return UI_TOUCH_NONE;
