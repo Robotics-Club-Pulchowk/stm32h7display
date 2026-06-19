@@ -33,6 +33,7 @@ typedef enum
     UI_TOUCH_TEAM_BLUE,
     UI_TOUCH_RESET,
     UI_TOUCH_MODE_TOGGLE,
+    UI_TOUCH_SCREEN_CAM,
 } ui_touch_id_t;
 
 void display_ui_init(void);
@@ -40,6 +41,7 @@ void display_ui_draw(void);
 ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y);
 void display_ui_set_grid_state(uint8_t idx, uint8_t state);
 void display_ui_set_team_selection(uint8_t team);
+void display_ui_set_screen_cam_selection(uint8_t mode);
 void display_ui_reset_visual_state(void);
 void display_ui_set_mode(uint8_t mode);
 void display_ui_set_rx_text(const char *text);

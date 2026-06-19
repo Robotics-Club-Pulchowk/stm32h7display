@@ -24,6 +24,7 @@ typedef struct
 #define FONT_SIZE   24   /* character height used throughout */
 #define RESET_HEIGHT_RATIO_DEN 5u  /* reset height = available section-C height / 5 */
 #define MODE_HEIGHT_RATIO_DEN  5u
+#define SCREEN_CAM_HEIGHT_RATIO_DEN 5u  /* screen/cam height = available section-C height / 5 */
 #define RX_MODE_BTN_HEIGHT_RATIO_DEN 8u  /* RX-mode toggle button height = screen height / 8 */
 #define RX_TEXT_LEN            96u
 #define RX_TEXT_PADDING        16u
@@ -43,6 +44,7 @@ static grid_cell_t grid[GRID_CELLS];
 static button_t    sec_b[SEC_B_CNT];
 static button_t    sec_reset;
 static button_t    sec_mode;
+static button_t    sec_screen_cam;
 static button_t    rx_mode_btn;
 static const char *grid_labels[GRID_CELLS] =
 {
@@ -54,6 +56,7 @@ static const char *grid_labels[GRID_CELLS] =
 
 static uint8_t     grid_state[GRID_CELLS]; /* 0:number, 1:AR, 2:MR, 3:FAKE */
 static uint8_t     team_selected;     /* 0:none, 1:red, 2:blue */
+static uint8_t     screen_cam_sel;    /* 0:camera (default), 1:screen */
 static uint8_t     app_mode = DISPLAY_UI_MODE_TX;
 static char        rx_text[RX_TEXT_LEN] = "Waiting for UART data...";
 static uint16_t    rx_area_x1, rx_area_y1, rx_area_x2, rx_area_y2;
@@ -134,6 +137,17 @@ static void draw_mode_button(void)
     b.fill_color = WHITE;
     b.text_color = BLACK;
     b.label = (app_mode == DISPLAY_UI_MODE_RX) ? "Mode: RX" : "Mode: TX";
+
+    draw_button(&b);
+}
+
+static void draw_screen_cam_button(void)
+{
+    button_t b = sec_screen_cam;
+
+    b.fill_color = WHITE;
+    b.text_color = BLACK;
+    b.label = (screen_cam_sel == 1u) ? "Screen" : "Cam";
 
     draw_button(&b);
 }
@@ -271,6 +285,38 @@ void display_ui_init(void)
     sec_mode.text_color  = BLACK;
     sec_mode.label       = "Mode: TX";
 
+    /* ── Screen/Cam toggle (TX only) — fills the empty gap between Reset and Mode ── */
+    {
+        uint16_t sc_gap_top    = (uint16_t)(sec_reset.y2 + 1u + CELL_PAD);
+        uint16_t sc_gap_bottom = (uint16_t)((sec_mode.y1 > (CELL_PAD + 1u)) ? (sec_mode.y1 - 1u - CELL_PAD) : sec_mode.y1);
+        uint16_t sc_h          = (uint16_t)(avail_h / SCREEN_CAM_HEIGHT_RATIO_DEN);
+        if (sc_h == 0) sc_h = 1;
+
+        if (sc_gap_bottom > sc_gap_top)
+        {
+            uint16_t sc_gap_h = (uint16_t)(sc_gap_bottom - sc_gap_top + 1u);
+            uint16_t sc_y1;
+
+            if (sc_h > sc_gap_h) sc_h = sc_gap_h;
+            sc_y1 = (uint16_t)(sc_gap_top + (sc_gap_h - sc_h) / 2u);
+
+            sec_screen_cam.y1 = sc_y1;
+            sec_screen_cam.y2 = (uint16_t)(sc_y1 + sc_h - 1u);
+        }
+        else
+        {
+            /* Fallback for very short screens: collapse to a thin strip just above Mode. */
+            sec_screen_cam.y2 = (uint16_t)((sec_mode.y1 >= 2u) ? (sec_mode.y1 - 1u) : sec_mode.y1);
+            sec_screen_cam.y1 = sec_screen_cam.y2;
+        }
+
+        sec_screen_cam.x1         = CELL_PAD;
+        sec_screen_cam.x2         = (uint16_t)(cw2 - 1u - CELL_PAD);
+        sec_screen_cam.fill_color = WHITE;
+        sec_screen_cam.text_color = BLACK;
+        sec_screen_cam.label      = "Cam";
+    }
+
     display_ui_reset_visual_state();
 }
 
@@ -298,6 +344,7 @@ void display_ui_draw(void)
         for (uint8_t i = 0; i < GRID_CELLS; i++) draw_grid_idx(i);
         draw_team_buttons();
         draw_button(&sec_reset);
+        draw_screen_cam_button();
     }
     else
     {
@@ -335,6 +382,12 @@ ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
             y >= sec_reset.y1 && y <= sec_reset.y2)
         {
             return UI_TOUCH_RESET;
+        }
+
+        if (x >= sec_screen_cam.x1 && x <= sec_screen_cam.x2 &&
+            y >= sec_screen_cam.y1 && y <= sec_screen_cam.y2)
+        {
+            return UI_TOUCH_SCREEN_CAM;
         }
 
         if (x >= sec_mode.x1 && x <= sec_mode.x2 &&
@@ -377,6 +430,17 @@ void display_ui_set_team_selection(uint8_t team)
     draw_team_buttons();
 }
 
+void display_ui_set_screen_cam_selection(uint8_t mode)
+{
+    if (mode > 1u)
+    {
+        return;
+    }
+
+    screen_cam_sel = mode;
+    draw_screen_cam_button();
+}
+
 void display_ui_reset_visual_state(void)
 {
     for (uint8_t i = 0; i < GRID_CELLS; i++)
@@ -385,6 +449,7 @@ void display_ui_reset_visual_state(void)
     }
 
     team_selected = 0;
+    screen_cam_sel = 0;
 }
 
 void display_ui_set_mode(uint8_t mode)

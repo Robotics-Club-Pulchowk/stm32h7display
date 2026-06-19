@@ -55,7 +55,7 @@
 #define UART_FRAME_INTERVAL_MS   1000u
 #define RESET_ARM_TIMEOUT_MS     1000u
 #define GRID_CELL_COUNT            12u
-#define UART_FRAME_MAX_LEN         41u  /* team(2) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
+#define UART_FRAME_MAX_LEN         43u  /* team(2) + space(1) + screen_cam(1) + 12*(space+2 bits) + CRLF(2) + NUL(1) */
 #define UART_RX_LINE_MAX           96u  /* includes NUL terminator; max payload is 95 bytes */
 #define UART_RX_PAYLOAD_MAX        (UART_RX_LINE_MAX - 1u)
 
@@ -70,6 +70,7 @@
 
 /* USER CODE BEGIN PV */
 static uint8_t  g_team_sel          = 0;      /* 0:none, 1:red(A), 2:blue(B) */
+static uint8_t  g_screen_cam_sel    = 0;      /* 0:camera (default), 1:screen */
 static uint8_t  g_matrix_state[GRID_CELL_COUNT]; /* each cell: 0=digit, 1=AR, 2=MR, 3=FAKE */
 static uint8_t  g_app_mode          = DISPLAY_UI_MODE_TX;
 static uint8_t  g_reset_armed       = 0;
@@ -96,6 +97,7 @@ static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] = {11u, 10u, 9u, 8u, 7u,
 static void reset_all_state(void)
 {
     g_team_sel        = 0;
+    g_screen_cam_sel  = 0;
     memset(g_matrix_state, 0, sizeof(g_matrix_state));
     g_reset_armed     = 0;
     g_reset_arm_start = 0;
@@ -151,6 +153,12 @@ static void send_uart_frame(void)
 
     frame[0] = '\0';
     if (!frame_append_bits(frame, sizeof(frame), &off, team_bits))
+    {
+        return;
+    }
+
+    if (!frame_append_char(frame, sizeof(frame), &off, ' ') ||
+        !frame_append_char(frame, sizeof(frame), &off, g_screen_cam_sel ? '1' : '0'))
     {
         return;
     }
@@ -352,6 +360,11 @@ int main(void)
                       g_team_sel = 2;
                       display_ui_set_team_selection(2);
                   }
+              }
+              else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_SCREEN_CAM))
+              {
+                  g_screen_cam_sel = (uint8_t)(g_screen_cam_sel ^ 1u);
+                  display_ui_set_screen_cam_selection(g_screen_cam_sel);
               }
               else if ((g_app_mode == DISPLAY_UI_MODE_TX) && (id == UI_TOUCH_RESET))
               {
