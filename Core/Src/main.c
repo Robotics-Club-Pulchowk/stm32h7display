@@ -324,6 +324,7 @@ int main(void)
   /* Compute section layout and paint the UI */
   display_ui_init();
   display_ui_draw();
+  printf("hello\n");
   g_last_uart_sent_ms = HAL_GetTick();
 
   /* USER CODE END 2 */
