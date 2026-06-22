@@ -314,33 +314,41 @@ int main(void)
 
         if (tp_dev.sta & TP_PRES_DOWN)
         {
+            g_touch_x = tp_dev.x[0];
+            g_touch_y = tp_dev.y[0];
+
             if (!g_touch_down)
             {
                 g_touch_down = 1u;
-            }
 
-            g_touch_x = tp_dev.x[0];
-            g_touch_y = tp_dev.y[0];
-            // Check if touch happened on uart button, if so, update uart_send_flag and redraw button immediately
-            ui_touch_id_t touch_id = display_ui_get_touch_id(g_touch_x, g_touch_y);
-            if (touch_id == UI_TOUCH_UART_SEND)
-            {
-                uart_send_flag = 1u;
-                display_ui_set_uart_send(1u);
+                ui_touch_id_t id =
+                    display_ui_get_touch_id(g_touch_x, g_touch_y);
+
+                if (id == UI_TOUCH_UART_SEND)
+                {
+                    uart_send_flag = 1u;
+                    display_ui_set_uart_send(1u);
+                }
             }
-            else
-                uart_send_flag = 0u; // If touch is not on uart button, disable uart sending to prevent accidental sends
-            display_ui_set_uart_send(0u);
         }
         else
         {
             if (g_touch_down)
             {
-                g_touch_down = 0u;
+                ui_touch_id_t id =
+                    display_ui_get_touch_id(g_touch_x, g_touch_y);
 
-                handle_touch_page1(
-                    g_touch_x,
-                    g_touch_y);
+                if (id == UI_TOUCH_UART_SEND)
+                {
+                    uart_send_flag = 0u;
+                    display_ui_set_uart_send(0u);
+                }
+                else
+                {
+                    handle_touch_page1(g_touch_x, g_touch_y);
+                }
+
+                g_touch_down = 0u;
             }
         }
     }
