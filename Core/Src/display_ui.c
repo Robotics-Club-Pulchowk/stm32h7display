@@ -45,27 +45,12 @@ typedef struct
 #define COLOR_FAKE BLACK
 
 /* ── Page 2 colors ─────────────────────────────────────────────────────── */
-/*
- * Motor buttons use a three-value color scheme for visual clarity:
- *
- *   OFF  — dark grey  : button is idle / not held
- *   ON   — bright green : button is actively held (momentary press)
- *   ON border — white ring drawn inside the cell boundary when held,
- *               giving immediate tactile feedback without a full repaint.
- *
- * Init All and Start Tree use their own color pairs.
- */
-#define COLOR_MOTOR_OFF        0x4208u   /* dark grey        */
-#define COLOR_MOTOR_ON         GREEN     /* bright green     */
-#define COLOR_MOTOR_BORDER     WHITE     /* inner ring: held */
-
-#define COLOR_INIT_OFF         0x630Cu   /* dark red         */
-#define COLOR_INIT_ON          RED
-#define COLOR_TREE_OFF         0x0019u   /* dark blue        */
-#define COLOR_TREE_ON          BLUE
-
-/* Thickness of the inner highlight ring drawn when a motor button is held */
-#define MOTOR_PRESS_RING       3u
+#define COLOR_MOTOR_OFF    0x4208u   /* dark grey  */
+#define COLOR_MOTOR_ON     GREEN
+#define COLOR_INIT_OFF     0x630Cu   /* dark red   */
+#define COLOR_INIT_ON      RED
+#define COLOR_TREE_OFF     0x0019u   /* dark blue  */
+#define COLOR_TREE_ON      BLUE
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Static state
@@ -98,15 +83,7 @@ static button_t motor_btn[MOTOR_COUNT];
 static button_t btn_init_all;
 static button_t btn_start_tree;
 
-/*
- * motor_state[] — tracks the last value pushed to the display layer.
- * The UI redraw functions consult this to choose colors; the application
- * layer in main.c owns the logical state and drives changes here through
- * display_ui_set_motor_state().
- *
- * Values: 0 = off (not held), 1 = on (currently held).
- */
-static uint8_t motor_state[MOTOR_COUNT];
+static uint8_t motor_state[MOTOR_COUNT];   /* 0 = off, 1 = on */
 static uint8_t init_all_state   = 0u;
 static uint8_t start_tree_state = 0u;
 
@@ -141,45 +118,6 @@ static void draw_button(const button_t *b)
     lcd_fill(b->x1, b->y1, b->x2, b->y2, b->fill_color);
     g_back_color = b->fill_color;
     lcd_show_string(tx, ty, text_w, text_h, FONT_SIZE, (char *)b->label, b->text_color);
-}
-
-/*
- * draw_button_with_ring — draws a button and, when `ring` is non-zero,
- * overlays a thin WHITE rectangle just inside the button boundary.
- *
- * This gives held motor buttons a crisp "active" highlight ring without
- * needing additional bitmap assets or a second fill pass over the full cell.
- * The ring is drawn AFTER the fill/text so it sits on top cleanly.
- *
- * The ring thickness is MOTOR_PRESS_RING pixels on all four sides.
- */
-static void draw_button_with_ring(const button_t *b, uint8_t ring)
-{
-    draw_button(b);
-
-    if (!ring) return;
-
-    uint16_t r = MOTOR_PRESS_RING;
-
-    /* Top bar */
-    lcd_fill(b->x1,      b->y1,
-             b->x2,      (uint16_t)(b->y1 + r - 1u),
-             COLOR_MOTOR_BORDER);
-
-    /* Bottom bar */
-    lcd_fill(b->x1,      (uint16_t)(b->y2 - r + 1u),
-             b->x2,      b->y2,
-             COLOR_MOTOR_BORDER);
-
-    /* Left bar */
-    lcd_fill(b->x1,      (uint16_t)(b->y1 + r),
-             (uint16_t)(b->x1 + r - 1u), (uint16_t)(b->y2 - r),
-             COLOR_MOTOR_BORDER);
-
-    /* Right bar */
-    lcd_fill((uint16_t)(b->x2 - r + 1u), (uint16_t)(b->y1 + r),
-             b->x2,                        (uint16_t)(b->y2 - r),
-             COLOR_MOTOR_BORDER);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -322,36 +260,13 @@ static void paint_tx_page(void)
  * Private helpers — page 2 draw
  * ══════════════════════════════════════════════════════════════════════════ */
 
-/*
- * draw_motor_btn — repaints a single motor button to reflect its current
- * state in motor_state[].
- *
- * When the button is held (state = 1):
- *   • fill  → bright green   (COLOR_MOTOR_ON)
- *   • text  → black          (high contrast on bright background)
- *   • ring  → white inner border (MOTOR_PRESS_RING pixels thick)
- *
- * When the button is idle (state = 0):
- *   • fill  → dark grey      (COLOR_MOTOR_OFF)
- *   • text  → white
- *   • ring  → none
- *
- * The ring is added via draw_button_with_ring() so the "active" state
- * is unmistakable at a glance without requiring a full page repaint.
- *
- * This function is called only when state actually changes (0→1 or 1→0),
- * so there is no redundant redraw cost.
- */
 static void draw_motor_btn(uint8_t idx)
 {
     button_t b   = motor_btn[idx];
-    uint8_t  on  = motor_state[idx];
-
-    b.fill_color = on ? COLOR_MOTOR_ON  : COLOR_MOTOR_OFF;
-    b.text_color = on ? BLACK           : WHITE;
+    b.fill_color = motor_state[idx] ? COLOR_MOTOR_ON  : COLOR_MOTOR_OFF;
+    b.text_color = motor_state[idx] ? BLACK            : WHITE;
     b.label      = motor_labels[idx];
-
-    draw_button_with_ring(&b, on);
+    draw_button(&b);
 }
 
 static void draw_init_all_btn(void)
@@ -372,33 +287,15 @@ static void draw_start_tree_btn(void)
     draw_button(&b);
 }
 
-/*
- * paint_motor_page — full repaint of page 2.
- *
- * Layout (top to bottom):
- *   1. Title bar  — "Motor Control" centred, with a WHITE underline rule
- *                   that matches the page-1 divider style.
- *   2. Motor grid — 2 × 3 buttons filling the middle section.
- *   3. Action row — Init All | Start Tree side-by-side at the bottom.
- *
- * The underline rule under the title makes the page header feel consistent
- * with the dividers on page 1, and visually separates the title from the
- * motor grid without wasting vertical space.
- */
 static void paint_motor_page(void)
 {
-    uint16_t w = lcddev.width;
-
     lcd_clear(BLACK);
 
-    /* Title */
+    /* Draw page title */
+    uint16_t w = lcddev.width;
     g_back_color = BLACK;
-    lcd_show_string(0u, CELL_PAD, w, FONT_SIZE, FONT_SIZE,
+    lcd_show_string(0u, 0u, w, FONT_SIZE, FONT_SIZE,
                     "Motor Control", WHITE);
-
-    /* Underline rule beneath the title — mirrors page-1 divider style */
-    uint16_t rule_y = (uint16_t)(CELL_PAD + FONT_SIZE + CELL_PAD);
-    lcd_fill(0u, rule_y, (uint16_t)(w - 1u), (uint16_t)(rule_y + BORDER_W - 1u), WHITE);
 
     for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
         draw_motor_btn(i);
@@ -512,18 +409,14 @@ static void init_page2_layout(void)
     uint16_t w = lcddev.width;
     uint16_t h = lcddev.height;
 
-    /*
-     * Title bar height: top padding + font + bottom padding + underline rule.
-     * This matches the values used in paint_motor_page() so geometry and
-     * paint are always in sync.
-     */
-    uint16_t title_h = (uint16_t)(CELL_PAD + FONT_SIZE + CELL_PAD + BORDER_W + CELL_PAD);
+    /* Reserve top row for title */
+    uint16_t title_h = (uint16_t)(FONT_SIZE + CELL_PAD * 2u);
 
     /* ── Motor grid  (2 columns × 3 rows) ───────────────────────────── */
     uint16_t motor_area_h = (uint16_t)(h - title_h);
 
-    /* Bottom 25 % → action buttons; top 75 % → motor grid */
-    uint16_t action_h     = (uint16_t)(motor_area_h / 4u);
+    /*  Bottom 25 % → action buttons; top 75 % → motor grid */
+    uint16_t action_h    = (uint16_t)(motor_area_h / 4u);
     uint16_t motor_grid_h = (uint16_t)(motor_area_h - action_h);
 
     uint16_t cw = (uint16_t)(w / MOTOR_GRID_COLS);
@@ -720,17 +613,6 @@ void display_ui_reset_visual_state(void)
 
 /* ── Page 2 state setters ───────────────────────────────────────────────── */
 
-/*
- * display_ui_set_motor_state — update the visual state of one motor button.
- *
- * This is called by main.c exactly once per state transition:
- *   • Once on finger-down  (0 → 1) via motor_press()
- *   • Once on finger-up    (1 → 0) via motor_release()
- *
- * No change-guard is needed here because main.c's motor_press() /
- * motor_release() functions already guard the call site with g_motor_state[].
- * We update our local mirror and repaint if the page is active.
- */
 void display_ui_set_motor_state(uint8_t motor_idx, uint8_t active)
 {
     if (motor_idx >= MOTOR_COUNT)
