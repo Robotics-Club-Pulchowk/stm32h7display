@@ -6,12 +6,10 @@ BAUD = 115200
 PACKET_SIZE = 17
 START_BYTE = 0xA5
 
-
-
-
 ser = serial.Serial(PORT, BAUD, timeout=1)
 
 print("Waiting for packets...")
+
 CRC8_TABLE = [
 0x00,0x07,0x0E,0x09,0x1C,0x1B,0x12,0x15,
 0x38,0x3F,0x36,0x31,0x24,0x23,0x2A,0x2D,
@@ -47,13 +45,18 @@ CRC8_TABLE = [
 0xE6,0xE1,0xE8,0xEF,0xFA,0xFD,0xF4,0xF3
 ]
 
+# pkt[3 + i] = g_matrix_state[i], where grid_labels[i] = 12 - i
+# so pkt byte index i (0-based within grids) corresponds to block label (12 - i)
+GRID_BLOCK_LABELS = [12 - i for i in range(12)]  # [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+GRID_STATE_NAMES = {0: "EMPTY", 1: "AR", 2: "MR", 3: "FAKE"}
+
 def crc8(data):
     crc = 0
-
     for b in data:
         crc = CRC8_TABLE[b ^ crc]
-
     return crc
+
 while True:
 
     # Find start byte
@@ -74,45 +77,30 @@ while True:
     packet = bytes([START_BYTE]) + payload
 
     received_crc = packet[16]
-    calculated_crc = crc8(packet[:16])
+    calculated_crc = crc8(packet[1:16])
 
     if received_crc != calculated_crc:
         print("CRC ERROR")
         continue
 
-    team = "BLUE" if packet[1] else "RED"
-    tx_enable = bool(packet[2])
+    team      = "BLUE" if packet[1] else "RED"
+    cam_scr   = "SCR" if packet[2] else "CAM"   # pkt[2] = g_cam_screen
 
-    grids = packet[3:15]
-
+    grids   = packet[3:15]   # 12 bytes, one per grid cell
     control = packet[15]
 
-    motors = []
-    for i in range(6):
-        motors.append((control >> i) & 1)
-
-    init_all = (control >> 6) & 1
+    motors = [(control >> i) & 1 for i in range(6)]
+    init_all   = (control >> 6) & 1
     start_tree = (control >> 7) & 1
 
     print("---------------")
-    print("Team:", team)
-    print("TX:", tx_enable)
-
-    print("Grids:")
+    print(f"Team:    {team}")
+    print(f"CAM/SCR: {cam_scr}")
+    print("Blocks:")
     for i, value in enumerate(grids):
-        if value == 0:
-            state = "EMPTY"
-        elif value == 1:
-            state = "AR"
-        elif value == 2:
-            state = "MR"
-        elif value == 3:
-            state = "FAKE"
-        else:
-            state = f"UNKNOWN({value})"
-
-        print(f"  Grid {i}: {state}")
-
-    print("Motors:", motors)
-    print("Init:", init_all)
-    print("Start:", start_tree)
+        label = GRID_BLOCK_LABELS[i]
+        state = GRID_STATE_NAMES.get(value, f"UNKNOWN({value})")
+        print(f"  Block {label:2d}: {state}")
+    print(f"Motors:  {motors}")
+    print(f"Init:    {init_all}")
+    print(f"Start:   {start_tree}")
