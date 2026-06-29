@@ -29,6 +29,10 @@ typedef struct
 #define FONT_SIZE              24u
 #define SEC_C_VGAP_RATIO_DEN   10u
 
+/* Reserved touch-free strip at the very bottom of pages 1 (TX) and 2 (Motor)
+ * so a swipe started low on the screen never lands on a button first. */
+#define SWIPE_MARGIN_H         40u
+
 /* ── Grid (page 1) ─────────────────────────────────────────────────────── */
 #define GRID_COLS   3u
 #define GRID_ROWS   4u
@@ -38,6 +42,11 @@ typedef struct
 #define MOTOR_COUNT        6u
 #define MOTOR_GRID_COLS    2u
 #define MOTOR_GRID_ROWS    3u
+
+/* ── Lift / tic-tac-toe grid (page 0) ─────────────────────────────────── */
+#define TTT_COLS  3u
+#define TTT_ROWS  3u
+#define TTT_CELLS (TTT_COLS * TTT_ROWS)
 
 /* ── Cell-state colors ─────────────────────────────────────────────────── */
 #define COLOR_AR   BROWN
@@ -51,6 +60,12 @@ typedef struct
 #define COLOR_INIT_ON      RED
 #define COLOR_TREE_OFF     0x0019u   /* dark blue  */
 #define COLOR_TREE_ON      BLUE
+
+/* ── Page 0 (Lift) colors ─────────────────────────────────────────────── */
+#define COLOR_LIFT_OFF     0x630Cu   /* dark red   */
+#define COLOR_LIFT_ON      GREEN
+#define COLOR_TTT_OFF      BROWN     /* brown, inactive / disabled cell  */
+#define COLOR_TTT_ON       0x5140u   /* darker brown, active cell        */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Static state
@@ -93,6 +108,27 @@ static const char *motor_labels[MOTOR_COUNT] =
     "Motor 3", "Motor 4",
     "Motor 5", "Motor 6"
 };
+
+/* ── Page 0 (Lift) ─────────────────────────────────────────────────────── */
+static button_t  btn_lift;
+static button_t  ttt_cell[TTT_CELLS];
+
+/*
+ * Row-major, top-left to bottom-right, matching the user-facing numbering:
+ *   row0 (top):    9 8 7
+ *   row1 (middle): 6 5 4
+ *   row2 (bottom): 3 2 1
+ */
+static const uint8_t ttt_cell_number[TTT_CELLS] =
+{
+    9u, 8u, 7u,
+    6u, 5u, 4u,
+    3u, 2u, 1u
+};
+
+static uint8_t lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted          */
+static uint8_t ttt_mid_state = 0u;   /* 0=none, 1=cell4, 2=cell5, 3=cell6 */
+static uint8_t ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9 */
 
 /* ── Active page ───────────────────────────────────────────────────────── */
 static uint8_t active_page = DISPLAY_UI_PAGE_TX;
@@ -287,6 +323,68 @@ static void draw_start_tree_btn(void)
     draw_button(&b);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * Private helpers — page 0 (Lift) draw
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+static uint8_t ttt_cell_is_active(uint8_t number)
+{
+    switch (number)
+    {
+        case 4u: return (ttt_mid_state == 1u);
+        case 5u: return (ttt_mid_state == 2u);
+        case 6u: return (ttt_mid_state == 3u);
+        case 7u: return (ttt_top_state == 1u);
+        case 8u: return (ttt_top_state == 2u);
+        case 9u: return (ttt_top_state == 3u);
+        default: return 0u;   /* bottom row (1/2/3) never active */
+    }
+}
+
+static void draw_lift_button(void)
+{
+    button_t b = btn_lift;
+    b.fill_color = lift_state ? COLOR_LIFT_ON : COLOR_LIFT_OFF;
+    b.text_color = WHITE;
+    b.label      = lift_state ? "ON" : "DEFAULT";
+    draw_button(&b);
+}
+
+static void draw_ttt_idx(uint8_t idx)
+{
+    char label[4];
+    uint8_t number = ttt_cell_number[idx];
+    uint8_t active = ttt_cell_is_active(number);
+
+    button_t b   = ttt_cell[idx];
+    b.fill_color = active ? COLOR_TTT_ON : COLOR_TTT_OFF;
+    b.text_color = WHITE;
+
+    label[0] = (char)('0' + number);
+    label[1] = '\0';
+    b.label  = label;
+
+    draw_button(&b);
+}
+
+static void paint_lift_page(void)
+{
+    uint16_t w    = lcddev.width;
+    uint16_t h    = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
+    uint16_t midx = (uint16_t)(w / 2u);
+
+    lcd_clear(BLACK);
+
+    /* Section divider between left half (lift) and right half (grid) */
+    lcd_fill(midx, 0u,
+             (uint16_t)(midx + BORDER_W - 1u), (uint16_t)(h - 1u), WHITE);
+
+    draw_lift_button();
+
+    for (uint8_t i = 0u; i < TTT_CELLS; i++)
+        draw_ttt_idx(i);
+}
+
 static void paint_motor_page(void)
 {
     lcd_clear(BLACK);
@@ -307,6 +405,40 @@ static void paint_motor_page(void)
 /* ══════════════════════════════════════════════════════════════════════════
  * Layout initialisation helpers
  * ══════════════════════════════════════════════════════════════════════════ */
+
+static void init_page0_layout(void)
+{
+    uint16_t w    = lcddev.width;
+    uint16_t h    = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
+    uint16_t midx = (uint16_t)(w / 2u);
+
+    /* ── Left half — Lift/Dropped toggle ──────────────────────────────── */
+    btn_lift.x1 = CELL_PAD;
+    btn_lift.y1 = CELL_PAD;
+    btn_lift.x2 = (uint16_t)(midx - 1u - CELL_PAD);
+    btn_lift.y2 = (uint16_t)(h - 1u - CELL_PAD);
+    btn_lift.fill_color = COLOR_LIFT_OFF;
+    btn_lift.text_color = WHITE;
+    btn_lift.label      = "Dropped";
+
+    /* ── Right half — 3x3 tic-tac-toe grid ────────────────────────────── */
+    uint16_t rx1 = (uint16_t)(midx + BORDER_W);
+    uint16_t rw  = (uint16_t)(w - rx1);
+    uint16_t cw  = (uint16_t)(rw / TTT_COLS);
+    uint16_t ch  = (uint16_t)(h / TTT_ROWS);
+
+    for (uint8_t r = 0u; r < TTT_ROWS; r++)
+    {
+        for (uint8_t c = 0u; c < TTT_COLS; c++)
+        {
+            uint8_t idx = (uint8_t)(r * TTT_COLS + c);
+            ttt_cell[idx].x1 = (uint16_t)(rx1 + c * cw + CELL_PAD);
+            ttt_cell[idx].y1 = (uint16_t)(r * ch + CELL_PAD);
+            ttt_cell[idx].x2 = (uint16_t)(rx1 + (c + 1u) * cw - 1u - CELL_PAD);
+            ttt_cell[idx].y2 = (uint16_t)((r + 1u) * ch - 1u - CELL_PAD);
+        }
+    }
+}
 
 static void init_page1_layout(void)
 {
@@ -407,7 +539,7 @@ static void init_page1_layout(void)
 static void init_page2_layout(void)
 {
     uint16_t w = lcddev.width;
-    uint16_t h = lcddev.height;
+    uint16_t h = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
 
     /* Reserve top row for title */
     uint16_t title_h = (uint16_t)(FONT_SIZE + CELL_PAD * 2u);
@@ -465,6 +597,7 @@ static void init_page2_layout(void)
 
 void display_ui_init(void)
 {
+    init_page0_layout();
     init_page1_layout();
     init_page2_layout();
     display_ui_reset_visual_state();
@@ -473,7 +606,9 @@ void display_ui_init(void)
 
 void display_ui_draw(void)
 {
-    if (active_page == DISPLAY_UI_PAGE_MOTOR)
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+        paint_lift_page();
+    else if (active_page == DISPLAY_UI_PAGE_MOTOR)
         paint_motor_page();
     else
         paint_tx_page();
@@ -501,7 +636,32 @@ uint8_t display_ui_get_page(void)
 
 ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
 {
-    if (active_page == DISPLAY_UI_PAGE_TX)
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+    {
+        if (x >= btn_lift.x1 && x <= btn_lift.x2 &&
+            y >= btn_lift.y1 && y <= btn_lift.y2)
+            return UI_TOUCH_LIFT_TOGGLE;
+
+        for (uint8_t i = 0u; i < TTT_CELLS; i++)
+        {
+            if (x >= ttt_cell[i].x1 && x <= ttt_cell[i].x2 &&
+                y >= ttt_cell[i].y1 && y <= ttt_cell[i].y2)
+            {
+                uint8_t number = ttt_cell_number[i];
+                switch (number)
+                {
+                    case 4u: return UI_TOUCH_TTT_4;
+                    case 5u: return UI_TOUCH_TTT_5;
+                    case 6u: return UI_TOUCH_TTT_6;
+                    case 7u: return UI_TOUCH_TTT_7;
+                    case 8u: return UI_TOUCH_TTT_8;
+                    case 9u: return UI_TOUCH_TTT_9;
+                    default: return UI_TOUCH_NONE; /* bottom row 1/2/3: not touchable */
+                }
+            }
+        }
+    }
+    else if (active_page == DISPLAY_UI_PAGE_TX)
     {
         /* Grid cells */
         for (uint8_t i = 0u; i < GRID_CELLS; i++)
@@ -609,6 +769,11 @@ void display_ui_reset_visual_state(void)
         motor_state[i] = 0u;
     init_all_state   = 0u;
     start_tree_state = 0u;
+
+    /* Page 0 (Lift) */
+    lift_state    = 0u;
+    ttt_mid_state = 0u;
+    ttt_top_state = 0u;
 }
 
 /* ── Page 2 state setters ───────────────────────────────────────────────── */
@@ -634,4 +799,60 @@ void display_ui_set_start_tree_state(uint8_t active)
     start_tree_state = active ? 1u : 0u;
     if (active_page == DISPLAY_UI_PAGE_MOTOR)
         draw_start_tree_btn();
+}
+
+/* ── Page 0 (Lift) state setters ─────────────────────────────────────────── */
+
+void display_ui_set_lift_state(uint8_t active)
+{
+    lift_state = active ? 1u : 0u;
+
+    /* Dropping disarms any mid/top selection — nothing should stay "armed"
+     * once the rig is no longer lifted. */
+    if (!lift_state)
+    {
+        ttt_mid_state = 0u;
+        ttt_top_state = 0u;
+    }
+
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+    {
+        draw_lift_button();
+
+        /* Only the mid/top cells need redrawing — and only when dropping,
+         * since that's the only case where their visual state changes. */
+        if (!lift_state)
+        {
+            draw_ttt_idx(0u); draw_ttt_idx(1u); draw_ttt_idx(2u);
+            draw_ttt_idx(3u); draw_ttt_idx(4u); draw_ttt_idx(5u);
+        }
+    }
+}
+
+void display_ui_set_ttt_mid_state(uint8_t mode)
+{
+    if (mode > 3u)
+        return;
+    ttt_mid_state = mode;
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+    {
+        /* Redraw only the middle-row cells (idx 3,4,5 in row-major order) */
+        draw_ttt_idx(3u);
+        draw_ttt_idx(4u);
+        draw_ttt_idx(5u);
+    }
+}
+
+void display_ui_set_ttt_top_state(uint8_t mode)
+{
+    if (mode > 3u)
+        return;
+    ttt_top_state = mode;
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+    {
+        /* Redraw only the top-row cells (idx 0,1,2 in row-major order) */
+        draw_ttt_idx(0u);
+        draw_ttt_idx(1u);
+        draw_ttt_idx(2u);
+    }
 }

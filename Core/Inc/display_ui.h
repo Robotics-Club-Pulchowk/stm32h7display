@@ -63,6 +63,16 @@ typedef enum
     UI_TOUCH_INIT_ALL,
     UI_TOUCH_START_TREE,
 
+    /* Page 0 (Lift) – left half toggle + right-half tic-tac-toe grid */
+    UI_TOUCH_LIFT_TOGGLE,
+    UI_TOUCH_TTT_4,   /* middle row, right */
+    UI_TOUCH_TTT_5,   /* middle row, middle */
+    UI_TOUCH_TTT_6,   /* middle row, left */
+    UI_TOUCH_TTT_7,   /* top row, right */
+    UI_TOUCH_TTT_8,   /* top row, middle */
+    UI_TOUCH_TTT_9,   /* top row, left */
+    /* NOTE: cells 1/2/3 (bottom row) are intentionally NOT touch targets */
+
 } ui_touch_id_t;
 
 /* ── Team / scroll constants ────────────────────────────────────────────── */
@@ -75,9 +85,15 @@ typedef enum
 #define DISPLAY_UI_SCROLL_FAKE 3u
 
 /* ── Page IDs ───────────────────────────────────────────────────────────── */
-
-#define DISPLAY_UI_PAGE_TX     0u
-#define DISPLAY_UI_PAGE_MOTOR  1u
+/*
+ * Swipe order (left to right):  LIFT(0)  <-->  TX(1)  <-->  MOTOR(2)
+ * Swiping right moves to a higher page number; swiping left moves to a
+ * lower page number. LIFT therefore sits to the left of TX, and MOTOR
+ * sits to the right of TX, matching the physical swipe gesture.
+ */
+#define DISPLAY_UI_PAGE_LIFT   0u
+#define DISPLAY_UI_PAGE_TX     1u
+#define DISPLAY_UI_PAGE_MOTOR  2u
 
 /* ── Public API ─────────────────────────────────────────────────────────── */
 
@@ -102,6 +118,11 @@ void display_ui_set_uart_send(uint8_t state);
 void display_ui_set_motor_state(uint8_t motor_idx, uint8_t active);
 void display_ui_set_init_all_state(uint8_t active);
 void display_ui_set_start_tree_state(uint8_t active);
+
+/* Page 0 (Lift) state setters */
+void display_ui_set_lift_state(uint8_t active);
+void display_ui_set_ttt_mid_state(uint8_t mode);   /* 0=none, 1=cell4, 2=cell5, 3=cell6 */
+void display_ui_set_ttt_top_state(uint8_t mode);   /* 0=none, 1=cell7, 2=cell8, 3=cell9 */
 
 /* Page navigation */
 void display_ui_set_page(uint8_t page);

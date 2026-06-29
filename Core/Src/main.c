@@ -75,6 +75,11 @@ static uint8_t uart_send_flag = 0u;
 static uint8_t g_motor_state[MOTOR_COUNT];
 static uint8_t init_all    = 0u;
 static uint8_t start_tree  = 0u;
+
+/* ── Lift / tic-tac-toe states (page 0) ─────────────────────────────────── */
+static uint8_t g_lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted           */
+static uint8_t g_ttt_mid_state = 0u;   /* 0=none, 1=cell4, 2=cell5, 3=cell6  */
+static uint8_t g_ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9  */
 /* USER CODE END PV */
 
 /* USER CODE BEGIN 0 */
@@ -124,6 +129,10 @@ static void reset_all_state(void)
     g_cam_screen   = 0u;
     uart_send_flag = 0u;
 
+    g_lift_state    = 0u;
+    g_ttt_mid_state = 0u;
+    g_ttt_top_state = 0u;
+
     memset(g_matrix_state, 0, sizeof(g_matrix_state));
     memset(g_motor_state,  0, sizeof(g_motor_state));
 
@@ -135,13 +144,14 @@ static void reset_all_state(void)
 
 static void send_uart_frame(void)
 {
-    uint8_t pkt[17] = {0};
+    uint8_t pkt[20] = {0};
 
     pkt[0] = 0xA5;
 
     /*
      * Page-1 fields only carry real data while TX is held.
      * Page-2 fields always reflect live state.
+     * Page-0 (Lift) fields always reflect live state too.
      */
     if (uart_send_flag != 0u)
     {
@@ -157,9 +167,13 @@ static void send_uart_frame(void)
     pkt[15] |= (init_all   & 1u) << 6u;
     pkt[15] |= (start_tree & 1u) << 7u;
 
-    pkt[16] = calculate_cr8x_fast(&pkt[1], 15u);
+    pkt[16] = g_lift_state;     /* 0 = Dropped, 1 = Lifted            */
+    pkt[17] = g_ttt_mid_state;  /* 0=none, 1=cell4, 2=cell5, 3=cell6   */
+    pkt[18] = g_ttt_top_state;  /* 0=none, 1=cell7, 2=cell8, 3=cell9   */
 
-    HAL_UART_Transmit(&huart1, pkt, 17u, 100u);
+    pkt[19] = calculate_cr8x_fast(&pkt[1], 18u);
+
+    HAL_UART_Transmit(&huart1, pkt, 20u, 100u);
 }
 
 /* ── Page 1: finger-down handler ────────────────────────────────────────────
@@ -231,6 +245,53 @@ static void handle_page1_finger_down(uint16_t x, uint16_t y)
     /* UI_TOUCH_UART_SEND is handled in the main loop, not here */
 }
 
+/* ── Page 0 (Lift): finger-down handler ──────────────────────────────────
+ *
+ * Same tap-toggle pattern as page 1: fires once on the leading edge of a
+ * touch. The Lift/Dropped button is a plain toggle. The middle-row and
+ * top-row tic-tac-toe cells are each exclusive single-select groups, and
+ * are only touch-active while Lift is ON (bottom row 1/2/3 is never a
+ * touch target at all — display_ui_get_touch_id() never returns an id
+ * for it).
+ * ──────────────────────────────────────────────────────────────────────────── */
+static void handle_page0_finger_down(uint16_t x, uint16_t y)
+{
+    ui_touch_id_t id = display_ui_get_touch_id(x, y);
+
+    if (id == UI_TOUCH_LIFT_TOGGLE)
+    {
+        g_lift_state ^= 1u;
+        display_ui_set_lift_state(g_lift_state);
+
+        /* Dropping disarms any armed mid/top selection */
+        if (!g_lift_state)
+        {
+            g_ttt_mid_state = 0u;
+            g_ttt_top_state = 0u;
+        }
+        return;
+    }
+
+    if (!g_lift_state)
+        return;   /* mid/top rows are inert until Lift is ON */
+
+    if (id == UI_TOUCH_TTT_4 || id == UI_TOUCH_TTT_5 || id == UI_TOUCH_TTT_6)
+    {
+        uint8_t mode = (uint8_t)(id - UI_TOUCH_TTT_4 + 1u);  /* 4->1, 5->2, 6->3 */
+        g_ttt_mid_state = (g_ttt_mid_state == mode) ? 0u : mode;  /* toggle / exclusive */
+        display_ui_set_ttt_mid_state(g_ttt_mid_state);
+        return;
+    }
+
+    if (id == UI_TOUCH_TTT_7 || id == UI_TOUCH_TTT_8 || id == UI_TOUCH_TTT_9)
+    {
+        uint8_t mode = (uint8_t)(id - UI_TOUCH_TTT_7 + 1u);  /* 7->1, 8->2, 9->3 */
+        g_ttt_top_state = (g_ttt_top_state == mode) ? 0u : mode;  /* toggle / exclusive */
+        display_ui_set_ttt_top_state(g_ttt_top_state);
+        return;
+    }
+}
+
 /* ── Page 2: hold-to-send scan handler ──────────────────────────────────────
  *
  * Called every scan loop.  A control's transmitted state is 1 only while
@@ -295,7 +356,7 @@ static uint8_t check_swipe(uint16_t x_down, uint16_t y_down,
     }
     else
     {
-        if (current_page > DISPLAY_UI_PAGE_TX)
+        if (current_page > DISPLAY_UI_PAGE_LIFT)
             display_ui_set_page((uint8_t)(current_page - 1u));
     }
 
@@ -388,6 +449,11 @@ int main(void)
                         /* All other page-1 buttons: fire once on touch-down */
                         handle_page1_finger_down(g_touch_x, g_touch_y);
                     }
+                }
+                else if (display_ui_get_page() == DISPLAY_UI_PAGE_LIFT)
+                {
+                    /* Lift toggle + tic-tac-toe cells: fire once on touch-down */
+                    handle_page0_finger_down(g_touch_x, g_touch_y);
                 }
             }
             /* else: finger is still down and sliding — do nothing for page 1 */

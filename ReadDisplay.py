@@ -1,9 +1,9 @@
 import serial
 
-PORT = "/dev/ttyUSB1"
+PORT = "/dev/ttyUSB0"
 BAUD = 115200
 
-PACKET_SIZE = 17
+PACKET_SIZE = 20
 START_BYTE = 0xA5
 
 ser = serial.Serial(PORT, BAUD, timeout=1)
@@ -51,6 +51,10 @@ GRID_BLOCK_LABELS = [12 - i for i in range(12)]  # [12, 11, 10, 9, 8, 7, 6, 5, 4
 
 GRID_STATE_NAMES = {0: "EMPTY", 1: "AR", 2: "MR", 3: "FAKE"}
 
+LIFT_STATE_NAMES = {0: "DEFAULT", 1: "ON"}
+TTT_MID_NAMES = {0: "NONE", 1: "CELL_4", 2: "CELL_5", 3: "CELL_6"}
+TTT_TOP_NAMES = {0: "NONE", 1: "CELL_7", 2: "CELL_8", 3: "CELL_9"}
+
 def crc8(data):
     crc = 0
     for b in data:
@@ -76,8 +80,8 @@ while True:
 
     packet = bytes([START_BYTE]) + payload
 
-    received_crc = packet[16]
-    calculated_crc = crc8(packet[1:16])
+    received_crc = packet[19]
+    calculated_crc = crc8(packet[1:19])
 
     if received_crc != calculated_crc:
         print("CRC ERROR")
@@ -93,6 +97,14 @@ while True:
     init_all   = (control >> 6) & 1
     start_tree = (control >> 7) & 1
 
+    lift_raw    = packet[16]
+    ttt_mid_raw = packet[17]
+    ttt_top_raw = packet[18]
+
+    lift_state = LIFT_STATE_NAMES.get(lift_raw, f"UNKNOWN({lift_raw})")
+    ttt_mid    = TTT_MID_NAMES.get(ttt_mid_raw, f"UNKNOWN({ttt_mid_raw})")
+    ttt_top    = TTT_TOP_NAMES.get(ttt_top_raw, f"UNKNOWN({ttt_top_raw})")
+
     print("---------------")
     print(f"Team:    {team}")
     print(f"CAM/SCR: {cam_scr}")
@@ -104,3 +116,7 @@ while True:
     print(f"Motors:  {motors}")
     print(f"Init:    {init_all}")
     print(f"Start:   {start_tree}")
+    print("Lift page:")
+    print(f"  Lift:     {lift_state}")
+    print(f"  Mid row:  {ttt_mid}")
+    print(f"  Top row:  {ttt_top}")
