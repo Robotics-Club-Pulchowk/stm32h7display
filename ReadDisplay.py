@@ -45,9 +45,9 @@ CRC8_TABLE = [
 0xE6,0xE1,0xE8,0xEF,0xFA,0xFD,0xF4,0xF3
 ]
 
-# pkt[3 + i] = g_matrix_state[i], where grid_labels[i] = 12 - i
-# so pkt byte index i (0-based within grids) corresponds to block label (12 - i)
-GRID_BLOCK_LABELS = [12 - i for i in range(12)]  # [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+# pkt[3 + i] = block (i + 1)
+# so pkt byte index i (0-based within grids) corresponds to block label (i + 1)
+GRID_BLOCK_LABELS = [i + 1 for i in range(12)]  # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 GRID_STATE_NAMES = {0: "EMPTY", 1: "AR", 2: "MR", 3: "FAKE"}
 

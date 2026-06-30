@@ -80,6 +80,14 @@ static uint8_t start_tree  = 0u;
 static uint8_t g_lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted           */
 static uint8_t g_ttt_mid_state = 0u;   /* 0=none, 1=cell4, 2=cell5, 3=cell6  */
 static uint8_t g_ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9  */
+
+/* ── Latched TX-page payload (bytes 1-14) ───────────────────────────────────
+ * Persists across TX release instead of resetting to 0. Only updated while
+ * TX is actively held; otherwise the last-latched values keep being sent.
+ */
+static uint8_t latched_team       = 0u;
+static uint8_t latched_cam_screen = 0u;
+static uint8_t latched_grid[GRID_CELL_COUNT] = {0};
 /* USER CODE END PV */
 
 /* USER CODE BEGIN 0 */
@@ -136,6 +144,12 @@ static void reset_all_state(void)
     memset(g_matrix_state, 0, sizeof(g_matrix_state));
     memset(g_motor_state,  0, sizeof(g_motor_state));
 
+    /* Note: latched_team / latched_cam_screen / latched_grid are
+     * intentionally left untouched here. Reset only updates the on-screen
+     * UI state; the transmitted (latched) TX-page payload keeps showing
+     * whatever was last sent until TX is held again, at which point it
+     * picks up the freshly-reset UI values. */
+
     display_ui_reset_visual_state();
     display_ui_draw();
 }
@@ -149,17 +163,32 @@ static void send_uart_frame(void)
     pkt[0] = 0xA5;
 
     /*
-     * Page-1 fields only carry real data while TX is held.
+     * Page-1 fields: while TX is held, sample live UI state into the
+     * latch and send it. While TX is released, keep sending whatever
+     * was last latched — do NOT fall back to zeros.
      * Page-2 fields always reflect live state.
      * Page-0 (Lift) fields always reflect live state too.
      */
     if (uart_send_flag != 0u)
     {
-        pkt[1] = (g_team_sel == DISPLAY_UI_TEAM_BLUE) ? 0x01u : 0x02u;
-        pkt[2] = g_cam_screen;
+        latched_team       = (g_team_sel == DISPLAY_UI_TEAM_BLUE) ? 0x01u : 0x02u;
+        latched_cam_screen = g_cam_screen;
         for (uint8_t i = 0u; i < GRID_CELL_COUNT; i++)
-            pkt[3 + i] = g_matrix_state[i];
+            /* g_matrix_state[idx] is indexed in on-screen raster order,
+             * where the displayed block label is (12 - idx) (see
+             * grid_labels[] in display_ui.c: "12","11",...,"1"). We want
+             * the transmitted byte order to instead go straight by block
+             * number: pkt[3]=block1, pkt[4]=block2, ... pkt[14]=block12.
+             * So latched_grid[i] (-> block i+1) pulls from array index
+             * (GRID_CELL_COUNT - 1 - i), which is wherever block (i+1)
+             * actually lives in g_matrix_state[]. */
+            latched_grid[i] = g_matrix_state[GRID_CELL_COUNT - 1u - i];
     }
+
+    pkt[1] = latched_team;
+    pkt[2] = latched_cam_screen;
+    for (uint8_t i = 0u; i < GRID_CELL_COUNT; i++)
+        pkt[3 + i] = latched_grid[i];
 
     pkt[15] = 0u;
     for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
@@ -169,7 +198,7 @@ static void send_uart_frame(void)
 
     pkt[16] = g_lift_state;     /* 0 = Dropped, 1 = Lifted            */
     pkt[17] = g_ttt_mid_state;  /* 0=none, 1=cell4, 2=cell5, 3=cell6   */
-    pkt[18] = g_ttt_top_state;  /* 0=none, 1=cell7, 2=cell8, 3=cell9   */
+    pkt[18] = (g_ttt_top_state != 0u) ? 1u : 0u;  /* 0=none, 1=any of cell7/8/9 touched */
 
     pkt[19] = calculate_cr8x_fast(&pkt[1], 18u);
 
