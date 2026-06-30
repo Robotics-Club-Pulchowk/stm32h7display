@@ -51,7 +51,7 @@ GRID_BLOCK_LABELS = [12 - i for i in range(12)]  # [12, 11, 10, 9, 8, 7, 6, 5, 4
 
 GRID_STATE_NAMES = {0: "EMPTY", 1: "AR", 2: "MR", 3: "FAKE"}
 
-LIFT_STATE_NAMES = {0: "DEFAULT", 1: "ON"}
+LIFT_STATE_NAMES = {0: "DROPPED", 1: "LIFTED"}
 TTT_MID_NAMES = {0: "NONE", 1: "CELL_4", 2: "CELL_5", 3: "CELL_6"}
 TTT_TOP_NAMES = {0: "NONE", 1: "CELL_7", 2: "CELL_8", 3: "CELL_9"}
 
@@ -87,7 +87,9 @@ while True:
         print("CRC ERROR")
         continue
 
-    team      = "BLUE" if packet[1] else "RED"
+    team_raw = packet[1]
+    team_names = {0x00: "NONE (TX not held)", 0x01: "BLUE", 0x02: "RED"}
+    team = team_names.get(team_raw, f"UNKNOWN({team_raw})")
     cam_scr   = "SCR" if packet[2] else "CAM"   # pkt[2] = g_cam_screen
 
     grids   = packet[3:15]   # 12 bytes, one per grid cell

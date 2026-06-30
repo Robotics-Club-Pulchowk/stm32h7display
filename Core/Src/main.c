@@ -155,7 +155,7 @@ static void send_uart_frame(void)
      */
     if (uart_send_flag != 0u)
     {
-        pkt[1] = (g_team_sel == DISPLAY_UI_TEAM_BLUE) ? 1u : 0u;
+        pkt[1] = (g_team_sel == DISPLAY_UI_TEAM_BLUE) ? 0x01u : 0x02u;
         pkt[2] = g_cam_screen;
         for (uint8_t i = 0u; i < GRID_CELL_COUNT; i++)
             pkt[3 + i] = g_matrix_state[i];
