@@ -409,7 +409,7 @@ static uint8_t check_swipe(uint16_t x_down, uint16_t y_down,
     }
     else
     {
-        if (current_page > DISPLAY_UI_PAGE_LIFT)
+        if (current_page > DISPLAY_UI_PAGE_RX)
             display_ui_set_page((uint8_t)(current_page - 1u));
     }
 

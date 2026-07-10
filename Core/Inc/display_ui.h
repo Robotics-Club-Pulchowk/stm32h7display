@@ -87,14 +87,12 @@ typedef enum
 
 /* ── Page IDs ───────────────────────────────────────────────────────────── */
 /*
- * Swipe order (left to right):  LIFT(0)  <-->  TX(1)  <-->  RX(2)  <-->  MOTOR(3)
- * Swiping right moves to a higher page number; swiping left moves to a
- * lower page number. LIFT therefore sits to the left of TX, and MOTOR
- * sits to the right of TX, matching the physical swipe gesture.
+ * Swipe order (left to right):  RX(0)  <-->  LIFT(1)  <-->  TX(2)  <-->  MOTOR(3)
+ * This yields MOTOR -> TX -> LIFT -> RX when swiping left.
  */
-#define DISPLAY_UI_PAGE_LIFT   0u
-#define DISPLAY_UI_PAGE_TX     1u
-#define DISPLAY_UI_PAGE_RX     2u
+#define DISPLAY_UI_PAGE_RX     0u
+#define DISPLAY_UI_PAGE_LIFT   1u
+#define DISPLAY_UI_PAGE_TX     2u
 #define DISPLAY_UI_PAGE_MOTOR  3u
 
 /* ── Public API ─────────────────────────────────────────────────────────── */
