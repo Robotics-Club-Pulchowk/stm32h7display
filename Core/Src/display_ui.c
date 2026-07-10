@@ -200,9 +200,24 @@ static void draw_grid_idx(uint8_t idx)
 static void draw_team_button(void)
 {
     button_t b  = sec_team;
-    b.fill_color = (team_selected == DISPLAY_UI_TEAM_BLUE) ? BLUE : RED;
-    b.text_color = WHITE;
-    b.label      = (team_selected == DISPLAY_UI_TEAM_BLUE) ? "Blue" : "Red";
+    if (team_selected == DISPLAY_UI_TEAM_BLUE)
+    {
+        b.fill_color = BLUE;
+        b.text_color = WHITE;
+        b.label      = "Blue";
+    }
+    else if (team_selected == DISPLAY_UI_TEAM_RED)
+    {
+        b.fill_color = RED;
+        b.text_color = WHITE;
+        b.label      = "Red";
+    }
+    else
+    {
+        b.fill_color = WHITE;
+        b.text_color = BLACK;
+        b.label      = "Choose Color";
+    }
     draw_button(&b);
 }
 
@@ -478,9 +493,9 @@ static void init_page1_layout(void)
     sec_team.y1 = bvy;
     sec_team.x2 = (uint16_t)(half_w - 1u - CELL_PAD);
     sec_team.y2 = (uint16_t)(bvy + sq - 1u);
-    sec_team.fill_color = RED;
-    sec_team.text_color = WHITE;
-    sec_team.label      = "Red";
+    sec_team.fill_color = WHITE;
+    sec_team.text_color = BLACK;
+    sec_team.label      = "Choose Color";
 
     sec_scroll.x1 = (uint16_t)(half_w + CELL_PAD);
     sec_scroll.y1 = bvy;
@@ -722,7 +737,9 @@ void display_ui_set_grid_state(uint8_t idx, uint8_t state)
 
 void display_ui_set_team_selection(uint8_t team)
 {
-    if (team > DISPLAY_UI_TEAM_BLUE)
+    if (team != DISPLAY_UI_TEAM_NONE &&
+        team != DISPLAY_UI_TEAM_RED  &&
+        team != DISPLAY_UI_TEAM_BLUE)
         return;
     team_selected = team;
     if (active_page == DISPLAY_UI_PAGE_TX)
@@ -759,7 +776,7 @@ void display_ui_reset_visual_state(void)
     /* Page 1 */
     for (uint8_t i = 0u; i < GRID_CELLS; i++)
         grid_state[i] = 0u;
-    team_selected   = DISPLAY_UI_TEAM_RED;
+    team_selected   = DISPLAY_UI_TEAM_NONE;
     scroll_mode     = DISPLAY_UI_SCROLL_AR;
     cam_screen_state = 0u;
     uart_send_state  = 0u;

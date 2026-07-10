@@ -1,6 +1,6 @@
 import serial
 
-PORT = "/dev/ttyUSB0"
+PORT = "/dev/ttyUSB1"
 BAUD = 115200
 
 PACKET_SIZE = 20
@@ -88,7 +88,7 @@ while True:
         continue
 
     team_raw = packet[1]
-    team_names = {0x00: "NONE (TX not held)", 0x01: "BLUE", 0x02: "RED"}
+    team_names = {0x00: "NONE (Choose Color)", 0x01: "BLUE", 0x02: "RED"}
     team = team_names.get(team_raw, f"UNKNOWN({team_raw})")
     cam_scr   = "SCR" if packet[2] else "CAM"   # pkt[2] = g_cam_screen
 

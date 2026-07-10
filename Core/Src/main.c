@@ -48,7 +48,7 @@
 /* USER CODE END PD */
 
 /* USER CODE BEGIN PV */
-static uint8_t g_team_sel   = DISPLAY_UI_TEAM_RED;
+static uint8_t g_team_sel   = DISPLAY_UI_TEAM_NONE;
 static uint8_t g_scroll_mode = DISPLAY_UI_SCROLL_AR;
 static uint8_t g_matrix_state[GRID_CELL_COUNT];
 
@@ -132,7 +132,7 @@ static uint8_t mode_slot_available(uint8_t mode)
 
 static void reset_all_state(void)
 {
-    g_team_sel     = DISPLAY_UI_TEAM_RED;
+    g_team_sel     = DISPLAY_UI_TEAM_NONE;
     g_scroll_mode  = DISPLAY_UI_SCROLL_AR;
     g_cam_screen   = 0u;
     uart_send_flag = 0u;
@@ -171,7 +171,7 @@ static void send_uart_frame(void)
      */
     if (uart_send_flag != 0u)
     {
-        latched_team       = (g_team_sel == DISPLAY_UI_TEAM_BLUE) ? 0x01u : 0x02u;
+        latched_team       = g_team_sel;  /* NONE=0x00, BLUE=0x01, RED=0x02 — values match wire encoding directly */
         latched_cam_screen = g_cam_screen;
         for (uint8_t i = 0u; i < GRID_CELL_COUNT; i++)
             /* g_matrix_state[idx] is indexed in on-screen raster order,
@@ -198,7 +198,7 @@ static void send_uart_frame(void)
 
     pkt[16] = g_lift_state;     /* 0 = Dropped, 1 = Lifted            */
     pkt[17] = g_ttt_mid_state;  /* 0=none, 1=cell4, 2=cell5, 3=cell6   */
-    pkt[18] = (g_ttt_top_state != 0u) ? 1u : 0u;  /* 0=none, 1=any of cell7/8/9 touched */
+    pkt[18] = g_ttt_top_state;  /* 0=none, 1=cell7, 2=cell8, 3=cell9   */
 
     pkt[19] = calculate_cr8x_fast(&pkt[1], 18u);
 
@@ -242,9 +242,12 @@ static void handle_page1_finger_down(uint16_t x, uint16_t y)
 
     if (id == UI_TOUCH_TEAM_TOGGLE)
     {
-        g_team_sel = (g_team_sel == DISPLAY_UI_TEAM_RED)
-                         ? DISPLAY_UI_TEAM_BLUE
-                         : DISPLAY_UI_TEAM_RED;
+        if (g_team_sel == DISPLAY_UI_TEAM_NONE)
+            g_team_sel = DISPLAY_UI_TEAM_RED;
+        else if (g_team_sel == DISPLAY_UI_TEAM_RED)
+            g_team_sel = DISPLAY_UI_TEAM_BLUE;
+        else
+            g_team_sel = DISPLAY_UI_TEAM_NONE;
         display_ui_set_team_selection(g_team_sel);
         return;
     }
@@ -278,10 +281,12 @@ static void handle_page1_finger_down(uint16_t x, uint16_t y)
  *
  * Same tap-toggle pattern as page 1: fires once on the leading edge of a
  * touch. The Lift/Dropped button is a plain toggle. The middle-row and
- * top-row tic-tac-toe cells are each exclusive single-select groups, and
- * are only touch-active while Lift is ON (bottom row 1/2/3 is never a
- * touch target at all — display_ui_get_touch_id() never returns an id
- * for it).
+ * top-row tic-tac-toe cells together form a single exclusive-select group
+ * spanning both rows — at most one cell out of all six (4-9) can be
+ * active at a time, so selecting a cell in one row clears any selection
+ * in the other row. Both rows are only touch-active while Lift is ON
+ * (bottom row 1/2/3 is never a touch target at all —
+ * display_ui_get_touch_id() never returns an id for it).
  * ──────────────────────────────────────────────────────────────────────────── */
 static void handle_page0_finger_down(uint16_t x, uint16_t y)
 {
@@ -309,6 +314,15 @@ static void handle_page0_finger_down(uint16_t x, uint16_t y)
         uint8_t mode = (uint8_t)(id - UI_TOUCH_TTT_4 + 1u);  /* 4->1, 5->2, 6->3 */
         g_ttt_mid_state = (g_ttt_mid_state == mode) ? 0u : mode;  /* toggle / exclusive */
         display_ui_set_ttt_mid_state(g_ttt_mid_state);
+
+        /* Only one cell across the whole grid (top row + middle row) may
+         * be selected at a time — picking a middle-row cell clears any
+         * top-row selection. */
+        if (g_ttt_top_state != 0u)
+        {
+            g_ttt_top_state = 0u;
+            display_ui_set_ttt_top_state(g_ttt_top_state);
+        }
         return;
     }
 
@@ -317,6 +331,14 @@ static void handle_page0_finger_down(uint16_t x, uint16_t y)
         uint8_t mode = (uint8_t)(id - UI_TOUCH_TTT_7 + 1u);  /* 7->1, 8->2, 9->3 */
         g_ttt_top_state = (g_ttt_top_state == mode) ? 0u : mode;  /* toggle / exclusive */
         display_ui_set_ttt_top_state(g_ttt_top_state);
+
+        /* Same rule in reverse — picking a top-row cell clears any
+         * middle-row selection. */
+        if (g_ttt_mid_state != 0u)
+        {
+            g_ttt_mid_state = 0u;
+            display_ui_set_ttt_mid_state(g_ttt_mid_state);
+        }
         return;
     }
 }

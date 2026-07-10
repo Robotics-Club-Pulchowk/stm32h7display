@@ -77,8 +77,9 @@ typedef enum
 
 /* ── Team / scroll constants ────────────────────────────────────────────── */
 
-#define DISPLAY_UI_TEAM_RED    0u
-#define DISPLAY_UI_TEAM_BLUE   1u
+#define DISPLAY_UI_TEAM_NONE   0u   /* default — "Choose Color", wire value 0x00 */
+#define DISPLAY_UI_TEAM_RED    2u   /* wire value 0x02 */
+#define DISPLAY_UI_TEAM_BLUE   1u   /* wire value 0x01 */
 
 #define DISPLAY_UI_SCROLL_AR   1u
 #define DISPLAY_UI_SCROLL_MR   2u
