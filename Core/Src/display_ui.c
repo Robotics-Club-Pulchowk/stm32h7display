@@ -1,6 +1,7 @@
 #include "display_ui.h"
 #include "lcd.h"
 #include <string.h>
+#include <stddef.h>
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Internal types
@@ -66,6 +67,7 @@ typedef struct
 #define COLOR_LIFT_ON      GREEN
 #define COLOR_TTT_OFF      BROWN     /* brown, inactive / disabled cell  */
 #define COLOR_TTT_ON       0x5140u   /* darker brown, active cell        */
+#define RX_HEX_TEXT_LEN    96u
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Static state
@@ -129,6 +131,9 @@ static const uint8_t ttt_cell_number[TTT_CELLS] =
 static uint8_t lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted          */
 static uint8_t ttt_mid_state = 0u;   /* 0=none, 1=cell4, 2=cell5, 3=cell6 */
 static uint8_t ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9 */
+
+/* ── Page 2 (RX) ─────────────────────────────────────────────────────────── */
+static char rx_hex_text[RX_HEX_TEXT_LEN] = "No RX data";
 
 /* ── Active page ───────────────────────────────────────────────────────── */
 static uint8_t active_page = DISPLAY_UI_PAGE_TX;
@@ -417,6 +422,28 @@ static void paint_motor_page(void)
     draw_start_tree_btn();
 }
 
+static char hex_nibble_to_char(uint8_t nibble)
+{
+    nibble &= 0x0Fu;
+    return (nibble < 10u) ? (char)('0' + nibble) : (char)('A' + (nibble - 10u));
+}
+
+static void paint_rx_page(void)
+{
+    uint16_t w = lcddev.width;
+    uint16_t h = lcddev.height;
+    uint16_t text_y = (uint16_t)(FONT_SIZE + CELL_PAD * 2u);
+
+    lcd_clear(BLACK);
+    g_back_color = BLACK;
+
+    lcd_show_string(0u, 0u, w, FONT_SIZE, FONT_SIZE, "UART RX", WHITE);
+    lcd_show_string(CELL_PAD, text_y,
+                    (uint16_t)(w - CELL_PAD * 2u),
+                    (uint16_t)(h - text_y),
+                    16u, rx_hex_text, GREEN);
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
  * Layout initialisation helpers
  * ══════════════════════════════════════════════════════════════════════════ */
@@ -623,6 +650,8 @@ void display_ui_draw(void)
 {
     if (active_page == DISPLAY_UI_PAGE_LIFT)
         paint_lift_page();
+    else if (active_page == DISPLAY_UI_PAGE_RX)
+        paint_rx_page();
     else if (active_page == DISPLAY_UI_PAGE_MOTOR)
         paint_motor_page();
     else
@@ -701,7 +730,7 @@ ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
             y >= sec_uart.y1 && y <= sec_uart.y2)
             return UI_TOUCH_UART_SEND;
     }
-    else  /* DISPLAY_UI_PAGE_MOTOR */
+    else if (active_page == DISPLAY_UI_PAGE_MOTOR)
     {
         for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
         {
@@ -871,5 +900,59 @@ void display_ui_set_ttt_top_state(uint8_t mode)
         draw_ttt_idx(0u);
         draw_ttt_idx(1u);
         draw_ttt_idx(2u);
+    }
+}
+
+void display_ui_set_rx_bytes(const uint8_t *data, uint16_t len)
+{
+    uint16_t max_bytes;
+    uint16_t start;
+    uint16_t pos = 0u;
+
+    if ((data == NULL) || (len == 0u))
+    {
+        return;
+    }
+
+    max_bytes = (uint16_t)((RX_HEX_TEXT_LEN - 1u) / 3u);
+    if (max_bytes == 0u)
+    {
+        return;
+    }
+
+    start = (len > max_bytes) ? (uint16_t)(len - max_bytes) : 0u;
+
+    for (uint16_t i = start; i < len; i++)
+    {
+        if ((pos + 2u) >= RX_HEX_TEXT_LEN)
+        {
+            break;
+        }
+
+        rx_hex_text[pos++] = hex_nibble_to_char((uint8_t)(data[i] >> 4));
+        rx_hex_text[pos++] = hex_nibble_to_char(data[i]);
+
+        if ((i + 1u) < len)
+        {
+            if ((pos + 1u) >= RX_HEX_TEXT_LEN)
+            {
+                break;
+            }
+            rx_hex_text[pos++] = ' ';
+        }
+    }
+
+    if (pos == 0u)
+    {
+        memcpy(rx_hex_text, "No RX data", sizeof("No RX data"));
+    }
+    else
+    {
+        rx_hex_text[pos] = '\0';
+    }
+
+    if (active_page == DISPLAY_UI_PAGE_RX)
+    {
+        paint_rx_page();
     }
 }
