@@ -27,6 +27,7 @@
 #define UART_FRAME_INTERVAL_MS 100u
 #define GRID_CELL_COUNT 12u
 #define UART_FRAME_MAX_LEN 100u
+#define UART_RX_READ_BUF_LEN 64u
 
 #define MAX_AR_CELLS 4u
 #define MAX_MR_CELLS 3u
@@ -88,6 +89,7 @@ static uint8_t g_ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9  */
 static uint8_t latched_team       = 0u;
 static uint8_t latched_cam_screen = 0u;
 static uint8_t latched_grid[GRID_CELL_COUNT] = {0};
+static uint8_t g_uart_rx_read_buf[UART_RX_READ_BUF_LEN];
 /* USER CODE END PV */
 
 /* USER CODE BEGIN 0 */
@@ -455,6 +457,12 @@ int main(void)
         }
 
         /* ── Touch scan ───────────────────────────────────────────────── */
+        uint16_t rx_len = usart1_rx_dma_read(g_uart_rx_read_buf, UART_RX_READ_BUF_LEN);
+        if (rx_len > 0u)
+        {
+            display_ui_set_rx_bytes(g_uart_rx_read_buf, rx_len);
+        }
+
         tp_dev.scan(0);
 
         uint8_t touch_now_down = (tp_dev.sta & TP_PRES_DOWN) ? 1u : 0u;

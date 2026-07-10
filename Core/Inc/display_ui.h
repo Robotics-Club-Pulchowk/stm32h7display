@@ -87,14 +87,15 @@ typedef enum
 
 /* ── Page IDs ───────────────────────────────────────────────────────────── */
 /*
- * Swipe order (left to right):  LIFT(0)  <-->  TX(1)  <-->  MOTOR(2)
+ * Swipe order (left to right):  LIFT(0)  <-->  TX(1)  <-->  RX(2)  <-->  MOTOR(3)
  * Swiping right moves to a higher page number; swiping left moves to a
  * lower page number. LIFT therefore sits to the left of TX, and MOTOR
  * sits to the right of TX, matching the physical swipe gesture.
  */
 #define DISPLAY_UI_PAGE_LIFT   0u
 #define DISPLAY_UI_PAGE_TX     1u
-#define DISPLAY_UI_PAGE_MOTOR  2u
+#define DISPLAY_UI_PAGE_RX     2u
+#define DISPLAY_UI_PAGE_MOTOR  3u
 
 /* ── Public API ─────────────────────────────────────────────────────────── */
 
@@ -124,6 +125,9 @@ void display_ui_set_start_tree_state(uint8_t active);
 void display_ui_set_lift_state(uint8_t active);
 void display_ui_set_ttt_mid_state(uint8_t mode);   /* 0=none, 1=cell4, 2=cell5, 3=cell6 */
 void display_ui_set_ttt_top_state(uint8_t mode);   /* 0=none, 1=cell7, 2=cell8, 3=cell9 */
+
+/* Page 2 (RX) setter */
+void display_ui_set_rx_bytes(const uint8_t *data, uint16_t len);
 
 /* Page navigation */
 void display_ui_set_page(uint8_t page);
