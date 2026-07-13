@@ -63,15 +63,18 @@ typedef enum
     UI_TOUCH_INIT_ALL,
     UI_TOUCH_START_TREE,
 
-    /* Page 0 (Lift) – left half toggle + right-half tic-tac-toe grid */
+    /* Page 0 (Lift) – left controls + right half lift/grid */
     UI_TOUCH_LIFT_TOGGLE,
+    UI_TOUCH_START_TOGGLE,
+    UI_TOUCH_RETRY1_TOGGLE,
+    UI_TOUCH_RETRY2_TOGGLE,
     UI_TOUCH_TTT_4,   /* middle row, right */
     UI_TOUCH_TTT_5,   /* middle row, middle */
     UI_TOUCH_TTT_6,   /* middle row, left */
     UI_TOUCH_TTT_7,   /* top row, right */
     UI_TOUCH_TTT_8,   /* top row, middle */
     UI_TOUCH_TTT_9,   /* top row, left */
-    /* NOTE: cells 1/2/3 (bottom row) are intentionally NOT touch targets */
+    /* NOTE: cells 1/2/3 are replaced by the lift ON/DEFAULT button */
 
 } ui_touch_id_t;
 
@@ -122,6 +125,9 @@ void display_ui_set_start_tree_state(uint8_t active);
 
 /* Page 0 (Lift) state setters */
 void display_ui_set_lift_state(uint8_t active);
+void display_ui_set_start_state(uint8_t active);
+void display_ui_set_retry1_state(uint8_t active);
+void display_ui_set_retry2_state(uint8_t active);
 void display_ui_set_ttt_mid_state(uint8_t mode);   /* 0=none, 1=cell4, 2=cell5, 3=cell6 */
 void display_ui_set_ttt_top_state(uint8_t mode);   /* 0=none, 1=cell7, 2=cell8, 3=cell9 */
 

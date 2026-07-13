@@ -47,6 +47,7 @@ typedef struct
 #define TTT_COLS  3u
 #define TTT_ROWS  3u
 #define TTT_CELLS (TTT_COLS * TTT_ROWS)
+#define TTT_TOUCH_CELLS 6u  /* top + middle rows only */
 
 /* ── Cell-state colors ─────────────────────────────────────────────────── */
 #define COLOR_AR   BROWN
@@ -66,6 +67,7 @@ typedef struct
 #define COLOR_LIFT_ON      GREEN
 #define COLOR_TTT_OFF      BROWN     /* brown, inactive / disabled cell  */
 #define COLOR_TTT_ON       0x5140u   /* darker brown, active cell        */
+#define COLOR_PAGE0_BTN_OFF 0x8410u  /* gray */
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Static state
@@ -111,6 +113,9 @@ static const char *motor_labels[MOTOR_COUNT] =
 
 /* ── Page 0 (Lift) ─────────────────────────────────────────────────────── */
 static button_t  btn_lift;
+static button_t  btn_start;
+static button_t  btn_retry1;
+static button_t  btn_retry2;
 static button_t  ttt_cell[TTT_CELLS];
 
 /*
@@ -127,6 +132,9 @@ static const uint8_t ttt_cell_number[TTT_CELLS] =
 };
 
 static uint8_t lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted          */
+static uint8_t start_state   = 0u;
+static uint8_t retry1_state  = 0u;
+static uint8_t retry2_state  = 0u;
 static uint8_t ttt_mid_state = 0u;   /* 0=none, 1=cell4, 2=cell5, 3=cell6 */
 static uint8_t ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9 */
 
@@ -356,6 +364,33 @@ static uint8_t ttt_cell_is_active(uint8_t number)
     }
 }
 
+static void draw_start_button(void)
+{
+    button_t b = btn_start;
+    b.fill_color = start_state ? BLUE : COLOR_PAGE0_BTN_OFF;
+    b.text_color = WHITE;
+    b.label      = "Start";
+    draw_button(&b);
+}
+
+static void draw_retry1_button(void)
+{
+    button_t b = btn_retry1;
+    b.fill_color = retry1_state ? GREEN : COLOR_PAGE0_BTN_OFF;
+    b.text_color = WHITE;
+    b.label      = "Retry1";
+    draw_button(&b);
+}
+
+static void draw_retry2_button(void)
+{
+    button_t b = btn_retry2;
+    b.fill_color = retry2_state ? RED : COLOR_PAGE0_BTN_OFF;
+    b.text_color = WHITE;
+    b.label      = "Retry2";
+    draw_button(&b);
+}
+
 static void draw_lift_button(void)
 {
     button_t b = btn_lift;
@@ -394,9 +429,12 @@ static void paint_lift_page(void)
     lcd_fill(midx, 0u,
              (uint16_t)(midx + BORDER_W - 1u), (uint16_t)(h - 1u), WHITE);
 
+    draw_start_button();
+    draw_retry1_button();
+    draw_retry2_button();
     draw_lift_button();
 
-    for (uint8_t i = 0u; i < TTT_CELLS; i++)
+    for (uint8_t i = 0u; i < TTT_TOUCH_CELLS; i++)
         draw_ttt_idx(i);
 }
 
@@ -426,33 +464,64 @@ static void init_page0_layout(void)
     uint16_t w    = lcddev.width;
     uint16_t h    = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
     uint16_t midx = (uint16_t)(w / 2u);
+    uint16_t lw   = midx;
+    uint16_t rwx1 = (uint16_t)(midx + BORDER_W);
+    uint16_t rw   = (uint16_t)(w - rwx1);
+    uint16_t row_h = (uint16_t)(h / TTT_ROWS);
 
-    /* ── Left half — Lift/Dropped toggle ──────────────────────────────── */
-    btn_lift.x1 = CELL_PAD;
-    btn_lift.y1 = CELL_PAD;
-    btn_lift.x2 = (uint16_t)(midx - 1u - CELL_PAD);
-    btn_lift.y2 = (uint16_t)(h - 1u - CELL_PAD);
-    btn_lift.fill_color = COLOR_LIFT_OFF;
-    btn_lift.text_color = WHITE;
-    btn_lift.label      = "Dropped";
+    /* ── Left half — Start / Retry1 / Retry2 ──────────────────────────── */
+    uint16_t left_btn_h = (uint16_t)(h / 3u);
+    uint16_t left_x1 = CELL_PAD;
+    uint16_t left_x2 = (uint16_t)(lw - 1u - CELL_PAD);
 
-    /* ── Right half — 3x3 tic-tac-toe grid ────────────────────────────── */
-    uint16_t rx1 = (uint16_t)(midx + BORDER_W);
-    uint16_t rw  = (uint16_t)(w - rx1);
+    btn_start.x1 = left_x1;
+    btn_start.x2 = left_x2;
+    btn_start.y1 = CELL_PAD;
+    btn_start.y2 = (uint16_t)(left_btn_h - 1u - CELL_PAD);
+    btn_start.fill_color = COLOR_PAGE0_BTN_OFF;
+    btn_start.text_color = WHITE;
+    btn_start.label      = "Start";
+
+    btn_retry1.x1 = left_x1;
+    btn_retry1.x2 = left_x2;
+    btn_retry1.y1 = (uint16_t)(left_btn_h + CELL_PAD);
+    btn_retry1.y2 = (uint16_t)(2u * left_btn_h - 1u - CELL_PAD);
+    btn_retry1.fill_color = COLOR_PAGE0_BTN_OFF;
+    btn_retry1.text_color = WHITE;
+    btn_retry1.label      = "Retry1";
+
+    btn_retry2.x1 = left_x1;
+    btn_retry2.x2 = left_x2;
+    btn_retry2.y1 = (uint16_t)(2u * left_btn_h + CELL_PAD);
+    btn_retry2.y2 = (uint16_t)(h - 1u - CELL_PAD);
+    btn_retry2.fill_color = COLOR_PAGE0_BTN_OFF;
+    btn_retry2.text_color = WHITE;
+    btn_retry2.label      = "Retry2";
+
+    /* ── Right half — top/middle grid cells 9..4 ──────────────────────── */
     uint16_t cw  = (uint16_t)(rw / TTT_COLS);
-    uint16_t ch  = (uint16_t)(h / TTT_ROWS);
+    uint16_t ch  = row_h;
 
-    for (uint8_t r = 0u; r < TTT_ROWS; r++)
+    for (uint8_t r = 0u; r < 2u; r++)
     {
         for (uint8_t c = 0u; c < TTT_COLS; c++)
         {
             uint8_t idx = (uint8_t)(r * TTT_COLS + c);
-            ttt_cell[idx].x1 = (uint16_t)(rx1 + c * cw + CELL_PAD);
+            ttt_cell[idx].x1 = (uint16_t)(rwx1 + c * cw + CELL_PAD);
             ttt_cell[idx].y1 = (uint16_t)(r * ch + CELL_PAD);
-            ttt_cell[idx].x2 = (uint16_t)(rx1 + (c + 1u) * cw - 1u - CELL_PAD);
+            ttt_cell[idx].x2 = (uint16_t)(rwx1 + (c + 1u) * cw - 1u - CELL_PAD);
             ttt_cell[idx].y2 = (uint16_t)((r + 1u) * ch - 1u - CELL_PAD);
         }
     }
+
+    /* ── Right half bottom row — ON/DEFAULT button ─────────────────────── */
+    btn_lift.x1 = (uint16_t)(rwx1 + CELL_PAD);
+    btn_lift.y1 = (uint16_t)(2u * row_h + CELL_PAD);
+    btn_lift.x2 = (uint16_t)(w - 1u - CELL_PAD);
+    btn_lift.y2 = (uint16_t)(h - 1u - CELL_PAD);
+    btn_lift.fill_color = COLOR_LIFT_OFF;
+    btn_lift.text_color = WHITE;
+    btn_lift.label      = "DEFAULT";
 }
 
 static void init_page1_layout(void)
@@ -657,7 +726,17 @@ ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
             y >= btn_lift.y1 && y <= btn_lift.y2)
             return UI_TOUCH_LIFT_TOGGLE;
 
-        for (uint8_t i = 0u; i < TTT_CELLS; i++)
+        if (x >= btn_start.x1 && x <= btn_start.x2 &&
+            y >= btn_start.y1 && y <= btn_start.y2)
+            return UI_TOUCH_START_TOGGLE;
+        if (x >= btn_retry1.x1 && x <= btn_retry1.x2 &&
+            y >= btn_retry1.y1 && y <= btn_retry1.y2)
+            return UI_TOUCH_RETRY1_TOGGLE;
+        if (x >= btn_retry2.x1 && x <= btn_retry2.x2 &&
+            y >= btn_retry2.y1 && y <= btn_retry2.y2)
+            return UI_TOUCH_RETRY2_TOGGLE;
+
+        for (uint8_t i = 0u; i < TTT_TOUCH_CELLS; i++)
         {
             if (x >= ttt_cell[i].x1 && x <= ttt_cell[i].x2 &&
                 y >= ttt_cell[i].y1 && y <= ttt_cell[i].y2)
@@ -789,6 +868,9 @@ void display_ui_reset_visual_state(void)
 
     /* Page 0 (Lift) */
     lift_state    = 0u;
+    start_state   = 0u;
+    retry1_state  = 0u;
+    retry2_state  = 0u;
     ttt_mid_state = 0u;
     ttt_top_state = 0u;
 }
@@ -844,6 +926,27 @@ void display_ui_set_lift_state(uint8_t active)
             draw_ttt_idx(3u); draw_ttt_idx(4u); draw_ttt_idx(5u);
         }
     }
+}
+
+void display_ui_set_start_state(uint8_t active)
+{
+    start_state = active ? 1u : 0u;
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+        draw_start_button();
+}
+
+void display_ui_set_retry1_state(uint8_t active)
+{
+    retry1_state = active ? 1u : 0u;
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+        draw_retry1_button();
+}
+
+void display_ui_set_retry2_state(uint8_t active)
+{
+    retry2_state = active ? 1u : 0u;
+    if (active_page == DISPLAY_UI_PAGE_LIFT)
+        draw_retry2_button();
 }
 
 void display_ui_set_ttt_mid_state(uint8_t mode)

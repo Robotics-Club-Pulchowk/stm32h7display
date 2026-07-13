@@ -3,7 +3,7 @@ import serial
 PORT = "/dev/ttyUSB1"
 BAUD = 115200
 
-PACKET_SIZE = 20
+PACKET_SIZE = 23
 START_BYTE = 0xA5
 
 ser = serial.Serial(PORT, BAUD, timeout=1)
@@ -80,8 +80,8 @@ while True:
 
     packet = bytes([START_BYTE]) + payload
 
-    received_crc = packet[19]
-    calculated_crc = crc8(packet[1:19])
+    received_crc = packet[22]
+    calculated_crc = crc8(packet[1:22])
 
     if received_crc != calculated_crc:
         print("CRC ERROR")
@@ -102,6 +102,9 @@ while True:
     lift_raw    = packet[16]
     ttt_mid_raw = packet[17]
     ttt_top_raw = packet[18]
+    start_raw   = packet[19]
+    retry1_raw  = packet[20]
+    retry2_raw  = packet[21]
 
     lift_state = LIFT_STATE_NAMES.get(lift_raw, f"UNKNOWN({lift_raw})")
     ttt_mid    = TTT_MID_NAMES.get(ttt_mid_raw, f"UNKNOWN({ttt_mid_raw})")
@@ -122,3 +125,6 @@ while True:
     print(f"  Lift:     {lift_state}")
     print(f"  Mid row:  {ttt_mid}")
     print(f"  Top row:  {ttt_top}")
+    print(f"  Start:    {start_raw}")
+    print(f"  Retry1:   {retry1_raw}")
+    print(f"  Retry2:   {retry2_raw}")
