@@ -70,11 +70,16 @@ static uint16_t g_touch_down_y = 0u;   /* Y where the finger first landed */
 static uint8_t g_cam_screen   = 0u;
 static uint8_t uart_send_flag = 0u;
 
-/* ── Motor states (page 2) ──────────────────────────────────────────────── */
-#define MOTOR_COUNT 6u
+/* ── Motor states (page 1) ──────────────────────────────────────────────── */
+#define MOTOR_COUNT 7u
 static uint8_t g_motor_state[MOTOR_COUNT];
 static uint8_t init_all    = 0u;
-static uint8_t start_tree  = 0u;
+
+/* ── Tree states (page 0) ───────────────────────────────────────────────── */
+static uint8_t tree_start    = 0u;
+static uint8_t tree_stop     = 0u;
+static uint8_t bringup_start = 0u;
+static uint8_t bringup_stop  = 0u;
 
 /* ── Lift / tic-tac-toe states (page 0) ─────────────────────────────────── */
 static uint8_t g_lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted           */
@@ -149,6 +154,11 @@ static void reset_all_state(void)
 
     memset(g_matrix_state, 0, sizeof(g_matrix_state));
     memset(g_motor_state,  0, sizeof(g_motor_state));
+    init_all = 0u;
+    tree_start = 0u;
+    tree_stop = 0u;
+    bringup_start = 0u;
+    bringup_stop = 0u;
 
     /* Note: latched_team / latched_cam_screen / latched_grid are
      * intentionally left untouched here. Reset only updates the on-screen
@@ -164,7 +174,7 @@ static void reset_all_state(void)
 
 static void send_uart_frame(void)
 {
-    uint8_t pkt[23] = {0};
+    uint8_t pkt[24] = {0};
 
     pkt[0] = 0xA5;
 
@@ -199,20 +209,25 @@ static void send_uart_frame(void)
     pkt[15] = 0u;
     for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
         pkt[15] |= (g_motor_state[i] & 1u) << i;
-    pkt[15] |= (init_all   & 1u) << 6u;
-    pkt[15] |= (start_tree & 1u) << 7u;
+    pkt[15] |= (init_all & 1u) << 7u;
 
-    pkt[16] = g_lift_state;     /* 0 = Dropped, 1 = Lifted            */
-    pkt[17] = g_ttt_mid_state;  /* 0=none, 1=cell4, 2=cell5, 3=cell6   */
-    pkt[18] = g_ttt_top_state;  /* 0=none, 1=cell7, 2=cell8, 3=cell9   */
+    pkt[16] = 0u;
+    pkt[16] |= (tree_start    & 1u) << 0u;
+    pkt[16] |= (tree_stop     & 1u) << 1u;
+    pkt[16] |= (bringup_start & 1u) << 2u;
+    pkt[16] |= (bringup_stop  & 1u) << 3u;
 
-    pkt[19] = g_start_state;
-    pkt[20] = g_retry1_state;
-    pkt[21] = g_retry2_state;
+    pkt[17] = g_lift_state;     /* 0 = Dropped, 1 = Lifted             */
+    pkt[18] = g_ttt_mid_state;  /* 0=none, 1=cell4, 2=cell5, 3=cell6   */
+    pkt[19] = g_ttt_top_state;  /* 0=none, 1=cell7, 2=cell8, 3=cell9   */
 
-    pkt[22] = calculate_cr8x_fast(&pkt[1], 21u);
+    pkt[20] = g_start_state;
+    pkt[21] = g_retry1_state;
+    pkt[22] = g_retry2_state;
 
-    HAL_UART_Transmit(&huart1, pkt, 23u, 100u);
+    pkt[23] = calculate_cr8x_fast(&pkt[1], 22u);
+
+    HAL_UART_Transmit(&huart1, pkt, 24u, 100u);
 }
 
 /* ── Page 1: finger-down handler ────────────────────────────────────────────
@@ -384,16 +399,20 @@ static void handle_page0_finger_down(uint16_t x, uint16_t y)
     }
 }
 
-/* ── Page 2: hold-to-send scan handler ──────────────────────────────────────
+/* ── Hold-to-send scan handler (Tree + Motor pages) ────────────────────────
  *
  * Called every scan loop.  A control's transmitted state is 1 only while
  * the finger is physically over that button; the instant it moves away or
  * lifts, the state goes back to 0.  Redraws are edge-triggered to avoid
  * flicker.
  * ──────────────────────────────────────────────────────────────────────────── */
-static void update_page2_hold_buttons(uint8_t is_down, uint16_t x, uint16_t y)
+static void update_hold_buttons(uint8_t is_down, uint16_t x, uint16_t y)
 {
-    ui_touch_id_t id = is_down ? display_ui_get_touch_id(x, y) : UI_TOUCH_NONE;
+    uint8_t page = display_ui_get_page();
+    ui_touch_id_t id = (is_down &&
+                        (page == DISPLAY_UI_PAGE_TREE || page == DISPLAY_UI_PAGE_MOTOR))
+                        ? display_ui_get_touch_id(x, y)
+                        : UI_TOUCH_NONE;
 
     for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
     {
@@ -412,11 +431,32 @@ static void update_page2_hold_buttons(uint8_t is_down, uint16_t x, uint16_t y)
         display_ui_set_init_all_state(now_init);
     }
 
-    uint8_t now_tree = (id == UI_TOUCH_START_TREE) ? 1u : 0u;
-    if (now_tree != start_tree)
+    uint8_t now_tree_start = (id == UI_TOUCH_TREE_START) ? 1u : 0u;
+    if (now_tree_start != tree_start)
     {
-        start_tree = now_tree;
-        display_ui_set_start_tree_state(now_tree);
+        tree_start = now_tree_start;
+        display_ui_set_tree_start_state(now_tree_start);
+    }
+
+    uint8_t now_tree_stop = (id == UI_TOUCH_TREE_STOP) ? 1u : 0u;
+    if (now_tree_stop != tree_stop)
+    {
+        tree_stop = now_tree_stop;
+        display_ui_set_tree_stop_state(now_tree_stop);
+    }
+
+    uint8_t now_bringup_start = (id == UI_TOUCH_BRINGUP_START) ? 1u : 0u;
+    if (now_bringup_start != bringup_start)
+    {
+        bringup_start = now_bringup_start;
+        display_ui_set_bringup_start_state(now_bringup_start);
+    }
+
+    uint8_t now_bringup_stop = (id == UI_TOUCH_BRINGUP_STOP) ? 1u : 0u;
+    if (now_bringup_stop != bringup_stop)
+    {
+        bringup_stop = now_bringup_stop;
+        display_ui_set_bringup_stop_state(now_bringup_stop);
     }
 }
 
@@ -443,7 +483,7 @@ static uint8_t check_swipe(uint16_t x_down, uint16_t y_down,
 
     if (dx > 0)
     {
-        if (current_page < DISPLAY_UI_PAGE_MOTOR)
+        if (current_page < DISPLAY_UI_PAGE_LIFT)
             display_ui_set_page((uint8_t)(current_page + 1u));
     }
     else
@@ -500,12 +540,9 @@ int main(void)
 
         uint8_t touch_now_down = (tp_dev.sta & TP_PRES_DOWN) ? 1u : 0u;
 
-        /*
-         * Page-2 hold-to-send controls: evaluated every scan so that
-         * sliding between buttons while held works correctly.
-         */
-        update_page2_hold_buttons(touch_now_down,
-                                   tp_dev.x[0], tp_dev.y[0]);
+        /* Hold-to-send controls on tree/motor pages. */
+        update_hold_buttons(touch_now_down,
+                            tp_dev.x[0], tp_dev.y[0]);
 
         if (touch_now_down)
         {

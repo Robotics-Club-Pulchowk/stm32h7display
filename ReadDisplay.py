@@ -3,7 +3,7 @@ import serial
 PORT = "/dev/ttyUSB1"
 BAUD = 115200
 
-PACKET_SIZE = 23
+PACKET_SIZE = 24
 START_BYTE = 0xA5
 
 ser = serial.Serial(PORT, BAUD, timeout=1)
@@ -80,8 +80,8 @@ while True:
 
     packet = bytes([START_BYTE]) + payload
 
-    received_crc = packet[22]
-    calculated_crc = crc8(packet[1:22])
+    received_crc = packet[23]
+    calculated_crc = crc8(packet[1:23])
 
     if received_crc != calculated_crc:
         print("CRC ERROR")
@@ -93,18 +93,23 @@ while True:
     cam_scr   = "SCR" if packet[2] else "CAM"   # pkt[2] = g_cam_screen
 
     grids   = packet[3:15]   # 12 bytes, one per grid cell
-    control = packet[15]
+    motor_control = packet[15]
+    tree_control  = packet[16]
 
-    motors = [(control >> i) & 1 for i in range(6)]
-    init_all   = (control >> 6) & 1
-    start_tree = (control >> 7) & 1
+    motors = [(motor_control >> i) & 1 for i in range(7)]
+    init_all = (motor_control >> 7) & 1
 
-    lift_raw    = packet[16]
-    ttt_mid_raw = packet[17]
-    ttt_top_raw = packet[18]
-    start_raw   = packet[19]
-    retry1_raw  = packet[20]
-    retry2_raw  = packet[21]
+    tree_start    = (tree_control >> 0) & 1
+    tree_stop     = (tree_control >> 1) & 1
+    bringup_start = (tree_control >> 2) & 1
+    bringup_stop  = (tree_control >> 3) & 1
+
+    lift_raw    = packet[17]
+    ttt_mid_raw = packet[18]
+    ttt_top_raw = packet[19]
+    start_raw   = packet[20]
+    retry1_raw  = packet[21]
+    retry2_raw  = packet[22]
 
     lift_state = LIFT_STATE_NAMES.get(lift_raw, f"UNKNOWN({lift_raw})")
     ttt_mid    = TTT_MID_NAMES.get(ttt_mid_raw, f"UNKNOWN({ttt_mid_raw})")
@@ -120,7 +125,11 @@ while True:
         print(f"  Block {label:2d}: {state}")
     print(f"Motors:  {motors}")
     print(f"Init:    {init_all}")
-    print(f"Start:   {start_tree}")
+    print("Tree page:")
+    print(f"  Start Tree:    {tree_start}")
+    print(f"  Stop Tree:     {tree_stop}")
+    print(f"  Start Bringup: {bringup_start}")
+    print(f"  Stop Bringup:  {bringup_stop}")
     print("Lift page:")
     print(f"  Lift:     {lift_state}")
     print(f"  Mid row:  {ttt_mid}")

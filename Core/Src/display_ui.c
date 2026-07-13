@@ -38,10 +38,10 @@ typedef struct
 #define GRID_ROWS   4u
 #define GRID_CELLS  (GRID_COLS * GRID_ROWS)
 
-/* ── Motor grid (page 2) ───────────────────────────────────────────────── */
-#define MOTOR_COUNT        6u
+/* ── Motor grid (page 1) ───────────────────────────────────────────────── */
+#define MOTOR_COUNT        7u
 #define MOTOR_GRID_COLS    2u
-#define MOTOR_GRID_ROWS    3u
+#define MOTOR_GRID_ROWS    4u
 
 /* ── Lift / tic-tac-toe grid (page 0) ─────────────────────────────────── */
 #define TTT_COLS  3u
@@ -54,13 +54,15 @@ typedef struct
 #define COLOR_MR   MAGENTA
 #define COLOR_FAKE BLACK
 
-/* ── Page 2 colors ─────────────────────────────────────────────────────── */
+/* ── Page 1/0 colors ───────────────────────────────────────────────────── */
 #define COLOR_MOTOR_OFF    0x4208u   /* dark grey  */
 #define COLOR_MOTOR_ON     GREEN
 #define COLOR_INIT_OFF     0x630Cu   /* dark red   */
 #define COLOR_INIT_ON      RED
 #define COLOR_TREE_OFF     0x0019u   /* dark blue  */
 #define COLOR_TREE_ON      BLUE
+#define COLOR_TREE_STOP_OFF 0x6000u  /* dark red   */
+#define COLOR_TREE_STOP_ON  RED
 
 /* ── Page 0 (Lift) colors ─────────────────────────────────────────────── */
 #define COLOR_LIFT_OFF     0x630Cu   /* dark red   */
@@ -95,21 +97,31 @@ static uint8_t scroll_mode      = DISPLAY_UI_SCROLL_AR;
 static uint8_t cam_screen_state = 0u;
 static uint8_t uart_send_state  = 0u;
 
-/* ── Page 2 ────────────────────────────────────────────────────────────── */
+/* ── Page 1 ────────────────────────────────────────────────────────────── */
 static button_t motor_btn[MOTOR_COUNT];
 static button_t btn_init_all;
-static button_t btn_start_tree;
 
 static uint8_t motor_state[MOTOR_COUNT];   /* 0 = off, 1 = on */
 static uint8_t init_all_state   = 0u;
-static uint8_t start_tree_state = 0u;
 
 static const char *motor_labels[MOTOR_COUNT] =
 {
     "Motor 1", "Motor 2",
     "Motor 3", "Motor 4",
-    "Motor 5", "Motor 6"
+    "Motor 5", "Motor 6",
+    "Motor 7"
 };
+
+/* ── Page 0 (Tree) ─────────────────────────────────────────────────────── */
+static button_t btn_tree_start;
+static button_t btn_tree_stop;
+static button_t btn_bringup_start;
+static button_t btn_bringup_stop;
+
+static uint8_t tree_start_state    = 0u;
+static uint8_t tree_stop_state     = 0u;
+static uint8_t bringup_start_state = 0u;
+static uint8_t bringup_stop_state  = 0u;
 
 /* ── Page 0 (Lift) ─────────────────────────────────────────────────────── */
 static button_t  btn_lift;
@@ -337,12 +349,39 @@ static void draw_init_all_btn(void)
     draw_button(&b);
 }
 
-static void draw_start_tree_btn(void)
+static void draw_tree_start_btn(void)
 {
-    button_t b   = btn_start_tree;
-    b.fill_color = start_tree_state ? COLOR_TREE_ON  : COLOR_TREE_OFF;
+    button_t b   = btn_tree_start;
+    b.fill_color = tree_start_state ? COLOR_TREE_ON  : COLOR_TREE_OFF;
     b.text_color = WHITE;
     b.label      = "Start Tree";
+    draw_button(&b);
+}
+
+static void draw_tree_stop_btn(void)
+{
+    button_t b   = btn_tree_stop;
+    b.fill_color = tree_stop_state ? COLOR_TREE_STOP_ON : COLOR_TREE_STOP_OFF;
+    b.text_color = WHITE;
+    b.label      = "Stop Tree";
+    draw_button(&b);
+}
+
+static void draw_bringup_start_btn(void)
+{
+    button_t b   = btn_bringup_start;
+    b.fill_color = bringup_start_state ? COLOR_TREE_ON  : COLOR_TREE_OFF;
+    b.text_color = WHITE;
+    b.label      = "Start Bringup";
+    draw_button(&b);
+}
+
+static void draw_bringup_stop_btn(void)
+{
+    button_t b   = btn_bringup_stop;
+    b.fill_color = bringup_stop_state ? COLOR_TREE_STOP_ON : COLOR_TREE_STOP_OFF;
+    b.text_color = WHITE;
+    b.label      = "Stop Bringup";
     draw_button(&b);
 }
 
@@ -452,14 +491,28 @@ static void paint_motor_page(void)
         draw_motor_btn(i);
 
     draw_init_all_btn();
-    draw_start_tree_btn();
+}
+
+static void paint_tree_page(void)
+{
+    lcd_clear(BLACK);
+
+    uint16_t w = lcddev.width;
+    g_back_color = BLACK;
+    lcd_show_string(0u, 0u, w, FONT_SIZE, FONT_SIZE,
+                    "Tree Control", WHITE);
+
+    draw_tree_start_btn();
+    draw_tree_stop_btn();
+    draw_bringup_start_btn();
+    draw_bringup_stop_btn();
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Layout initialisation helpers
  * ══════════════════════════════════════════════════════════════════════════ */
 
-static void init_page0_layout(void)
+static void init_page3_layout(void)
 {
     uint16_t w    = lcddev.width;
     uint16_t h    = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
@@ -524,7 +577,7 @@ static void init_page0_layout(void)
     btn_lift.label      = "DEFAULT";
 }
 
-static void init_page1_layout(void)
+static void init_page2_layout(void)
 {
     uint16_t w    = lcddev.width;
     uint16_t h    = lcddev.height;
@@ -620,7 +673,49 @@ static void init_page1_layout(void)
     sec_uart.label      = "TX OFF";
 }
 
-static void init_page2_layout(void)
+static void init_page0_layout(void)
+{
+    uint16_t w = lcddev.width;
+    uint16_t h = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
+
+    uint16_t title_h = (uint16_t)(FONT_SIZE + CELL_PAD * 2u);
+    uint16_t area_h  = (uint16_t)(h - title_h);
+    uint16_t cw      = (uint16_t)(w / 2u);
+    uint16_t ch      = (uint16_t)(area_h / 2u);
+
+    button_t *buttons[4] =
+    {
+        &btn_tree_start,
+        &btn_tree_stop,
+        &btn_bringup_start,
+        &btn_bringup_stop
+    };
+
+    for (uint8_t r = 0u; r < 2u; r++)
+    {
+        for (uint8_t c = 0u; c < 2u; c++)
+        {
+            uint8_t idx = (uint8_t)(r * 2u + c);
+            buttons[idx]->x1 = (uint16_t)(c * cw + CELL_PAD);
+            buttons[idx]->y1 = (uint16_t)(title_h + r * ch + CELL_PAD);
+            buttons[idx]->x2 = (uint16_t)((c + 1u) * cw - 1u - CELL_PAD);
+            buttons[idx]->y2 = (uint16_t)(title_h + (r + 1u) * ch - 1u - CELL_PAD);
+            buttons[idx]->text_color = WHITE;
+        }
+    }
+
+    btn_tree_start.fill_color    = COLOR_TREE_OFF;
+    btn_tree_stop.fill_color     = COLOR_TREE_STOP_OFF;
+    btn_bringup_start.fill_color = COLOR_TREE_OFF;
+    btn_bringup_stop.fill_color  = COLOR_TREE_STOP_OFF;
+
+    btn_tree_start.label    = "Start Tree";
+    btn_tree_stop.label     = "Stop Tree";
+    btn_bringup_start.label = "Start Bringup";
+    btn_bringup_stop.label  = "Stop Bringup";
+}
+
+static void init_page1_layout(void)
 {
     uint16_t w = lcddev.width;
     uint16_t h = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
@@ -628,12 +723,7 @@ static void init_page2_layout(void)
     /* Reserve top row for title */
     uint16_t title_h = (uint16_t)(FONT_SIZE + CELL_PAD * 2u);
 
-    /* ── Motor grid  (2 columns × 3 rows) ───────────────────────────── */
-    uint16_t motor_area_h = (uint16_t)(h - title_h);
-
-    /*  Bottom 25 % → action buttons; top 75 % → motor grid */
-    uint16_t action_h    = (uint16_t)(motor_area_h / 4u);
-    uint16_t motor_grid_h = (uint16_t)(motor_area_h - action_h);
+    uint16_t motor_grid_h = (uint16_t)(h - title_h);
 
     uint16_t cw = (uint16_t)(w / MOTOR_GRID_COLS);
     uint16_t ch = (uint16_t)(motor_grid_h / MOTOR_GRID_ROWS);
@@ -643,6 +733,8 @@ static void init_page2_layout(void)
         for (uint8_t c = 0u; c < MOTOR_GRID_COLS; c++)
         {
             uint8_t idx    = (uint8_t)(r * MOTOR_GRID_COLS + c);
+            if (idx >= MOTOR_COUNT)
+                continue;
             motor_btn[idx].x1 = (uint16_t)(c * cw + CELL_PAD);
             motor_btn[idx].y1 = (uint16_t)(title_h + r * ch + CELL_PAD);
             motor_btn[idx].x2 = (uint16_t)((c + 1u) * cw - 1u - CELL_PAD);
@@ -653,26 +745,14 @@ static void init_page2_layout(void)
         }
     }
 
-    /* ── Action buttons row ─────────────────────────────────────────── */
-    uint16_t action_y1 = (uint16_t)(title_h + motor_grid_h + CELL_PAD);
-    uint16_t action_y2 = (uint16_t)(h - 1u - CELL_PAD);
-    uint16_t half      = (uint16_t)(w / 2u);
-
-    btn_init_all.x1 = CELL_PAD;
-    btn_init_all.y1 = action_y1;
-    btn_init_all.x2 = half - CELL_PAD;
-    btn_init_all.y2 = action_y2;
+    uint16_t init_idx = (uint16_t)(MOTOR_GRID_ROWS - 1u);
+    btn_init_all.x1 = (uint16_t)(cw + CELL_PAD);
+    btn_init_all.y1 = (uint16_t)(title_h + init_idx * ch + CELL_PAD);
+    btn_init_all.x2 = (uint16_t)(w - 1u - CELL_PAD);
+    btn_init_all.y2 = (uint16_t)(title_h + (init_idx + 1u) * ch - 1u - CELL_PAD);
     btn_init_all.fill_color = COLOR_INIT_OFF;
     btn_init_all.text_color = WHITE;
     btn_init_all.label      = "Init All";
-
-    btn_start_tree.x1 = half + CELL_PAD;
-    btn_start_tree.y1 = action_y1;
-    btn_start_tree.x2 = (uint16_t)(w - 1u - CELL_PAD);
-    btn_start_tree.y2 = action_y2;
-    btn_start_tree.fill_color = COLOR_TREE_OFF;
-    btn_start_tree.text_color = WHITE;
-    btn_start_tree.label      = "Start Tree";
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -684,25 +764,28 @@ void display_ui_init(void)
     init_page0_layout();
     init_page1_layout();
     init_page2_layout();
+    init_page3_layout();
     display_ui_reset_visual_state();
     active_page = DISPLAY_UI_PAGE_TX;
 }
 
 void display_ui_draw(void)
 {
-    if (active_page == DISPLAY_UI_PAGE_LIFT)
-        paint_lift_page();
+    if (active_page == DISPLAY_UI_PAGE_TREE)
+        paint_tree_page();
     else if (active_page == DISPLAY_UI_PAGE_MOTOR)
         paint_motor_page();
-    else
+    else if (active_page == DISPLAY_UI_PAGE_TX)
         paint_tx_page();
+    else
+        paint_lift_page();
 }
 
 /* ── Page navigation ────────────────────────────────────────────────────── */
 
 void display_ui_set_page(uint8_t page)
 {
-    if (page > DISPLAY_UI_PAGE_MOTOR)
+    if (page > DISPLAY_UI_PAGE_LIFT)
         return;
     active_page = page;
     display_ui_draw();
@@ -720,7 +803,65 @@ uint8_t display_ui_get_page(void)
 
 ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
 {
-    if (active_page == DISPLAY_UI_PAGE_LIFT)
+    if (active_page == DISPLAY_UI_PAGE_TREE)
+    {
+        if (x >= btn_tree_start.x1 && x <= btn_tree_start.x2 &&
+            y >= btn_tree_start.y1 && y <= btn_tree_start.y2)
+            return UI_TOUCH_TREE_START;
+
+        if (x >= btn_tree_stop.x1 && x <= btn_tree_stop.x2 &&
+            y >= btn_tree_stop.y1 && y <= btn_tree_stop.y2)
+            return UI_TOUCH_TREE_STOP;
+
+        if (x >= btn_bringup_start.x1 && x <= btn_bringup_start.x2 &&
+            y >= btn_bringup_start.y1 && y <= btn_bringup_start.y2)
+            return UI_TOUCH_BRINGUP_START;
+
+        if (x >= btn_bringup_stop.x1 && x <= btn_bringup_stop.x2 &&
+            y >= btn_bringup_stop.y1 && y <= btn_bringup_stop.y2)
+            return UI_TOUCH_BRINGUP_STOP;
+    }
+    else if (active_page == DISPLAY_UI_PAGE_MOTOR)
+    {
+        for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
+        {
+            if (x >= motor_btn[i].x1 && x <= motor_btn[i].x2 &&
+                y >= motor_btn[i].y1 && y <= motor_btn[i].y2)
+            {
+                return (ui_touch_id_t)(UI_TOUCH_MOTOR_1 + i);
+            }
+        }
+
+        if (x >= btn_init_all.x1   && x <= btn_init_all.x2   &&
+            y >= btn_init_all.y1   && y <= btn_init_all.y2)
+            return UI_TOUCH_INIT_ALL;
+    }
+    else if (active_page == DISPLAY_UI_PAGE_TX)
+    {
+        /* Grid cells */
+        for (uint8_t i = 0u; i < GRID_CELLS; i++)
+        {
+            if (x >= grid[i].x1 && x <= grid[i].x2 &&
+                y >= grid[i].y1 && y <= grid[i].y2)
+            {
+                return (ui_touch_id_t)(UI_TOUCH_GRID_A + i);
+            }
+        }
+
+        if (x >= sec_team.x1   && x <= sec_team.x2   && y >= sec_team.y1   && y <= sec_team.y2)
+            return UI_TOUCH_TEAM_TOGGLE;
+        if (x >= sec_scroll.x1 && x <= sec_scroll.x2 && y >= sec_scroll.y1 && y <= sec_scroll.y2)
+            return UI_TOUCH_SCROLL_MODE;
+        if (x >= sec_reset.x1  && x <= sec_reset.x2  && y >= sec_reset.y1  && y <= sec_reset.y2)
+            return UI_TOUCH_RESET;
+        if (x >= sec_cam_scr.x1 && x <= sec_cam_scr.x2 &&
+            y >= sec_cam_scr.y1 && y <= sec_cam_scr.y2)
+            return UI_TOUCH_CAM_SCREEN;
+        if (x >= sec_uart.x1 && x <= sec_uart.x2 &&
+            y >= sec_uart.y1 && y <= sec_uart.y2)
+            return UI_TOUCH_UART_SEND;
+    }
+    else
     {
         if (x >= btn_lift.x1 && x <= btn_lift.x2 &&
             y >= btn_lift.y1 && y <= btn_lift.y2)
@@ -754,50 +895,6 @@ ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y)
                 }
             }
         }
-    }
-    else if (active_page == DISPLAY_UI_PAGE_TX)
-    {
-        /* Grid cells */
-        for (uint8_t i = 0u; i < GRID_CELLS; i++)
-        {
-            if (x >= grid[i].x1 && x <= grid[i].x2 &&
-                y >= grid[i].y1 && y <= grid[i].y2)
-            {
-                return (ui_touch_id_t)(UI_TOUCH_GRID_A + i);
-            }
-        }
-
-        if (x >= sec_team.x1   && x <= sec_team.x2   && y >= sec_team.y1   && y <= sec_team.y2)
-            return UI_TOUCH_TEAM_TOGGLE;
-        if (x >= sec_scroll.x1 && x <= sec_scroll.x2 && y >= sec_scroll.y1 && y <= sec_scroll.y2)
-            return UI_TOUCH_SCROLL_MODE;
-        if (x >= sec_reset.x1  && x <= sec_reset.x2  && y >= sec_reset.y1  && y <= sec_reset.y2)
-            return UI_TOUCH_RESET;
-        if (x >= sec_cam_scr.x1 && x <= sec_cam_scr.x2 &&
-            y >= sec_cam_scr.y1 && y <= sec_cam_scr.y2)
-            return UI_TOUCH_CAM_SCREEN;
-        if (x >= sec_uart.x1 && x <= sec_uart.x2 &&
-            y >= sec_uart.y1 && y <= sec_uart.y2)
-            return UI_TOUCH_UART_SEND;
-    }
-    else  /* DISPLAY_UI_PAGE_MOTOR */
-    {
-        for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
-        {
-            if (x >= motor_btn[i].x1 && x <= motor_btn[i].x2 &&
-                y >= motor_btn[i].y1 && y <= motor_btn[i].y2)
-            {
-                return (ui_touch_id_t)(UI_TOUCH_MOTOR_1 + i);
-            }
-        }
-
-        if (x >= btn_init_all.x1   && x <= btn_init_all.x2   &&
-            y >= btn_init_all.y1   && y <= btn_init_all.y2)
-            return UI_TOUCH_INIT_ALL;
-
-        if (x >= btn_start_tree.x1 && x <= btn_start_tree.x2 &&
-            y >= btn_start_tree.y1 && y <= btn_start_tree.y2)
-            return UI_TOUCH_START_TREE;
     }
 
     return UI_TOUCH_NONE;
@@ -860,13 +957,18 @@ void display_ui_reset_visual_state(void)
     cam_screen_state = 0u;
     uart_send_state  = 0u;
 
-    /* Page 2 */
+    /* Page 1 */
     for (uint8_t i = 0u; i < MOTOR_COUNT; i++)
         motor_state[i] = 0u;
     init_all_state   = 0u;
-    start_tree_state = 0u;
+ 
+    /* Page 0 */
+    tree_start_state    = 0u;
+    tree_stop_state     = 0u;
+    bringup_start_state = 0u;
+    bringup_stop_state  = 0u;
 
-    /* Page 0 (Lift) */
+    /* Page 3 (Lift) */
     lift_state    = 0u;
     start_state   = 0u;
     retry1_state  = 0u;
@@ -875,7 +977,7 @@ void display_ui_reset_visual_state(void)
     ttt_top_state = 0u;
 }
 
-/* ── Page 2 state setters ───────────────────────────────────────────────── */
+/* ── Page 1 state setters ───────────────────────────────────────────────── */
 
 void display_ui_set_motor_state(uint8_t motor_idx, uint8_t active)
 {
@@ -893,11 +995,32 @@ void display_ui_set_init_all_state(uint8_t active)
         draw_init_all_btn();
 }
 
-void display_ui_set_start_tree_state(uint8_t active)
+void display_ui_set_tree_start_state(uint8_t active)
 {
-    start_tree_state = active ? 1u : 0u;
-    if (active_page == DISPLAY_UI_PAGE_MOTOR)
-        draw_start_tree_btn();
+    tree_start_state = active ? 1u : 0u;
+    if (active_page == DISPLAY_UI_PAGE_TREE)
+        draw_tree_start_btn();
+}
+
+void display_ui_set_tree_stop_state(uint8_t active)
+{
+    tree_stop_state = active ? 1u : 0u;
+    if (active_page == DISPLAY_UI_PAGE_TREE)
+        draw_tree_stop_btn();
+}
+
+void display_ui_set_bringup_start_state(uint8_t active)
+{
+    bringup_start_state = active ? 1u : 0u;
+    if (active_page == DISPLAY_UI_PAGE_TREE)
+        draw_bringup_start_btn();
+}
+
+void display_ui_set_bringup_stop_state(uint8_t active)
+{
+    bringup_stop_state = active ? 1u : 0u;
+    if (active_page == DISPLAY_UI_PAGE_TREE)
+        draw_bringup_stop_btn();
 }
 
 /* ── Page 0 (Lift) state setters ─────────────────────────────────────────── */
