@@ -70,11 +70,14 @@ static uint16_t g_touch_down_y = 0u;   /* Y where the finger first landed */
 static uint8_t g_cam_screen   = 0u;
 static uint8_t uart_send_flag = 0u;
 
-/* ── Motor states (page 2) ──────────────────────────────────────────────── */
-#define MOTOR_COUNT 6u
+/* ── Motor states (page 1) ──────────────────────────────────────────────── */
+#define MOTOR_COUNT 7u
 static uint8_t g_motor_state[MOTOR_COUNT];
 static uint8_t init_all    = 0u;
-static uint8_t start_tree  = 0u;
+static uint8_t tree_start_state    = 0u;
+static uint8_t tree_stop_state     = 0u;
+static uint8_t bringup_start_state = 0u;
+static uint8_t bringup_stop_state  = 0u;
 
 /* ── Lift / tic-tac-toe states (page 0) ─────────────────────────────────── */
 static uint8_t g_lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted           */
@@ -149,6 +152,11 @@ static void reset_all_state(void)
 
     memset(g_matrix_state, 0, sizeof(g_matrix_state));
     memset(g_motor_state,  0, sizeof(g_motor_state));
+    init_all = 0u;
+    tree_start_state = 0u;
+    tree_stop_state = 0u;
+    bringup_start_state = 0u;
+    bringup_stop_state = 0u;
 
     /* Note: latched_team / latched_cam_screen / latched_grid are
      * intentionally left untouched here. Reset only updates the on-screen

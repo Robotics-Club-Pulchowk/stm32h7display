@@ -34,7 +34,7 @@ typedef enum
 {
     UI_TOUCH_NONE = 0,
 
-    /* Page 1 – TX grid */
+    /* Page 2 – TX grid */
     UI_TOUCH_GRID_A,
     UI_TOUCH_GRID_B,
     UI_TOUCH_GRID_C,
@@ -53,17 +53,23 @@ typedef enum
     UI_TOUCH_CAM_SCREEN,
     UI_TOUCH_UART_SEND,
 
-    /* Page 2 – Motor control */
+    /* Page 1 – Motor control */
     UI_TOUCH_MOTOR_1,
     UI_TOUCH_MOTOR_2,
     UI_TOUCH_MOTOR_3,
     UI_TOUCH_MOTOR_4,
     UI_TOUCH_MOTOR_5,
     UI_TOUCH_MOTOR_6,
+    UI_TOUCH_MOTOR_7,
     UI_TOUCH_INIT_ALL,
-    UI_TOUCH_START_TREE,
 
-    /* Page 0 (Lift) – left controls + right half lift/grid */
+    /* Page 0 – Tree control */
+    UI_TOUCH_TREE_START,
+    UI_TOUCH_TREE_STOP,
+    UI_TOUCH_BRINGUP_START,
+    UI_TOUCH_BRINGUP_STOP,
+
+    /* Page 3 (Lift) – left controls + right half lift/grid */
     UI_TOUCH_LIFT_TOGGLE,
     UI_TOUCH_START_TOGGLE,
     UI_TOUCH_RETRY1_TOGGLE,
@@ -90,14 +96,14 @@ typedef enum
 
 /* ── Page IDs ───────────────────────────────────────────────────────────── */
 /*
- * Swipe order (left to right):  LIFT(0)  <-->  TX(1)  <-->  MOTOR(2)
+ * Swipe order (left to right): TREE(0) <--> MOTOR(1) <--> TX(2) <--> LIFT(3)
  * Swiping right moves to a higher page number; swiping left moves to a
- * lower page number. LIFT therefore sits to the left of TX, and MOTOR
- * sits to the right of TX, matching the physical swipe gesture.
+ * lower page number.
  */
-#define DISPLAY_UI_PAGE_LIFT   0u
-#define DISPLAY_UI_PAGE_TX     1u
-#define DISPLAY_UI_PAGE_MOTOR  2u
+#define DISPLAY_UI_PAGE_TREE   0u
+#define DISPLAY_UI_PAGE_MOTOR  1u
+#define DISPLAY_UI_PAGE_TX     2u
+#define DISPLAY_UI_PAGE_LIFT   3u
 
 /* ── Public API ─────────────────────────────────────────────────────────── */
 
@@ -110,7 +116,7 @@ void          display_ui_draw(void);
 /* Hit-test a touch coordinate; returns the matching UI_TOUCH_* id */
 ui_touch_id_t display_ui_get_touch_id(uint16_t x, uint16_t y);
 
-/* Page 1 state setters */
+/* Page 2 state setters */
 void display_ui_set_grid_state(uint8_t idx, uint8_t state);
 void display_ui_set_team_selection(uint8_t team);
 void display_ui_set_cam_screen(uint8_t state);
@@ -118,12 +124,15 @@ void display_ui_set_scroll_mode(uint8_t mode);
 void display_ui_reset_visual_state(void);
 void display_ui_set_uart_send(uint8_t state);
 
-/* Page 2 state setters */
+/* Page 1 state setters */
 void display_ui_set_motor_state(uint8_t motor_idx, uint8_t active);
 void display_ui_set_init_all_state(uint8_t active);
-void display_ui_set_start_tree_state(uint8_t active);
+void display_ui_set_tree_start_state(uint8_t active);
+void display_ui_set_tree_stop_state(uint8_t active);
+void display_ui_set_bringup_start_state(uint8_t active);
+void display_ui_set_bringup_stop_state(uint8_t active);
 
-/* Page 0 (Lift) state setters */
+/* Page 3 (Lift) state setters */
 void display_ui_set_lift_state(uint8_t active);
 void display_ui_set_start_state(uint8_t active);
 void display_ui_set_retry1_state(uint8_t active);
