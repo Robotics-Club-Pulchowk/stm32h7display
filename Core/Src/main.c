@@ -78,6 +78,9 @@ static uint8_t start_tree  = 0u;
 
 /* ── Lift / tic-tac-toe states (page 0) ─────────────────────────────────── */
 static uint8_t g_lift_state    = 0u;   /* 0 = Dropped, 1 = Lifted           */
+static uint8_t g_start_state   = 0u;
+static uint8_t g_retry1_state  = 0u;
+static uint8_t g_retry2_state  = 0u;
 static uint8_t g_ttt_mid_state = 0u;   /* 0=none, 1=cell4, 2=cell5, 3=cell6  */
 static uint8_t g_ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9  */
 
@@ -138,6 +141,9 @@ static void reset_all_state(void)
     uart_send_flag = 0u;
 
     g_lift_state    = 0u;
+    g_start_state   = 0u;
+    g_retry1_state  = 0u;
+    g_retry2_state  = 0u;
     g_ttt_mid_state = 0u;
     g_ttt_top_state = 0u;
 
@@ -158,7 +164,7 @@ static void reset_all_state(void)
 
 static void send_uart_frame(void)
 {
-    uint8_t pkt[20] = {0};
+    uint8_t pkt[23] = {0};
 
     pkt[0] = 0xA5;
 
@@ -200,9 +206,13 @@ static void send_uart_frame(void)
     pkt[17] = g_ttt_mid_state;  /* 0=none, 1=cell4, 2=cell5, 3=cell6   */
     pkt[18] = g_ttt_top_state;  /* 0=none, 1=cell7, 2=cell8, 3=cell9   */
 
-    pkt[19] = calculate_cr8x_fast(&pkt[1], 18u);
+    pkt[19] = g_start_state;
+    pkt[20] = g_retry1_state;
+    pkt[21] = g_retry2_state;
 
-    HAL_UART_Transmit(&huart1, pkt, 20u, 100u);
+    pkt[22] = calculate_cr8x_fast(&pkt[1], 21u);
+
+    HAL_UART_Transmit(&huart1, pkt, 23u, 100u);
 }
 
 /* ── Page 1: finger-down handler ────────────────────────────────────────────
@@ -291,6 +301,37 @@ static void handle_page1_finger_down(uint16_t x, uint16_t y)
 static void handle_page0_finger_down(uint16_t x, uint16_t y)
 {
     ui_touch_id_t id = display_ui_get_touch_id(x, y);
+
+    if (id == UI_TOUCH_START_TOGGLE || id == UI_TOUCH_RETRY1_TOGGLE || id == UI_TOUCH_RETRY2_TOGGLE)
+    {
+        uint8_t next_start  = 0u;
+        uint8_t next_retry1 = 0u;
+        uint8_t next_retry2 = 0u;
+
+        if (id == UI_TOUCH_START_TOGGLE)
+            next_start = (g_start_state == 0u) ? 1u : 0u;
+        else if (id == UI_TOUCH_RETRY1_TOGGLE)
+            next_retry1 = (g_retry1_state == 0u) ? 1u : 0u;
+        else
+            next_retry2 = (g_retry2_state == 0u) ? 1u : 0u;
+
+        if (g_start_state != next_start)
+        {
+            g_start_state = next_start;
+            display_ui_set_start_state(g_start_state);
+        }
+        if (g_retry1_state != next_retry1)
+        {
+            g_retry1_state = next_retry1;
+            display_ui_set_retry1_state(g_retry1_state);
+        }
+        if (g_retry2_state != next_retry2)
+        {
+            g_retry2_state = next_retry2;
+            display_ui_set_retry2_state(g_retry2_state);
+        }
+        return;
+    }
 
     if (id == UI_TOUCH_LIFT_TOGGLE)
     {
