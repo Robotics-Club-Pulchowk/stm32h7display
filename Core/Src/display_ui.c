@@ -106,10 +106,10 @@ static uint8_t init_all_state   = 0u;
 
 static const char *motor_labels[MOTOR_COUNT] =
 {
-    "Motor 1", "Motor 2",
-    "Motor 3", "Motor 4",
-    "Motor 5", "Motor 6",
-    "Motor 7"
+    "Init Climb", "Init Roll",
+    "Init SpearPitch", "Init Elev-Vert",
+    "Init GripPitch", "Init GripCatch",
+    "3 Scroll Seq"
 };
 
 /* ── Page 0 (Tree) ─────────────────────────────────────────────────────── */
