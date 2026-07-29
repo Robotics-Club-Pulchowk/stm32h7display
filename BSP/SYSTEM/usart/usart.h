@@ -36,6 +36,12 @@ void usart1_start_rx_dma(void);
 uint16_t usart1_rx_dma_read(uint8_t *data, uint16_t max_len);
 
 /**
+ * @brief  Count of USART1 RX errors (noise/framing/parity/overrun)
+ *         recovered from since boot. Should stay at 0 on a healthy link.
+ */
+uint32_t usart1_get_rx_error_count(void);
+
+/**
  * @brief  Returns non-zero when a received byte is waiting in the RX register.
  */
 int usart1_recv_ready(void);

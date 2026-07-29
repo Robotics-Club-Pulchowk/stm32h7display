@@ -2,11 +2,11 @@
  ****************************************************************************************************					 
  * @file        sys.c
  * @version     V1.0
- * @brief       ÏµÍ³³õÊ¼»¯´úÂë(°üÀ¨Ê±ÖÓÅäÖÃ/ÖÐ¶Ï¹ÜÀí/GPIOÉèÖÃµÈ)            
+ * @brief       ÏµÍ³ï¿½ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½Ð¶Ï¹ï¿½ï¿½ï¿½/GPIOï¿½ï¿½ï¿½Ãµï¿½)            
  ****************************************************************************************************'
  *
  * V1.0
- * ½«Í·ÎÄ¼þ°üº¬Â·¾¶¸Ä³ÉÏà¶ÔÂ·¾¶,±ÜÃâÖØ¸´ÉèÖÃ°üº¬Â·¾¶µÄÂé·³
+ * ï¿½ï¿½Í·ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½Ä³ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½,ï¿½ï¿½ï¿½ï¿½ï¿½Ø¸ï¿½ï¿½ï¿½ï¿½Ã°ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½é·³
  *
  ****************************************************************************************************
  */ 
@@ -15,111 +15,111 @@
 
 
 /**
- * @brief       ÉèÖÃÖÐ¶ÏÏòÁ¿±íÆ«ÒÆµØÖ·
- * @param       baseaddr: »ùÖ·
- * @param       offset: Æ«ÒÆÁ¿
- * @retval      ÎÞ
+ * @brief       ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½Æµï¿½Ö·
+ * @param       baseaddr: ï¿½ï¿½Ö·
+ * @param       offset: Æ«ï¿½ï¿½ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_nvic_set_vector_table(uint32_t baseaddr, uint32_t offset)
 {
-    /* ÉèÖÃNVICµÄÏòÁ¿±íÆ«ÒÆ¼Ä´æÆ÷,VTORµÍ9Î»±£Áô,¼´[8:0]±£Áô */
+    /* ï¿½ï¿½ï¿½ï¿½NVICï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½Æ¼Ä´ï¿½ï¿½ï¿½,VTORï¿½ï¿½9Î»ï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½[8:0]ï¿½ï¿½ï¿½ï¿½ */
     SCB->VTOR = baseaddr | (offset & (uint32_t)0xFFFFFE00);
 }
 
 /**
- * @brief       ÉèÖÃNVIC·Ö×é
- * @param       group: 0~4,¹²5×é, ÏêÏ¸½âÊÍ¼û: sys_nvic_initº¯Êý²ÎÊýËµÃ÷
- * @retval      ÎÞ
+ * @brief       ï¿½ï¿½ï¿½ï¿½NVICï¿½ï¿½ï¿½ï¿½
+ * @param       group: 0~4,ï¿½ï¿½5ï¿½ï¿½, ï¿½ï¿½Ï¸ï¿½ï¿½ï¿½Í¼ï¿½: sys_nvic_initï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ëµï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 static void sys_nvic_priority_group_config(uint8_t group)
 {
     uint32_t temp, temp1;
-    temp1 = (~group) & 0x07;/* È¡ºóÈýÎ» */
+    temp1 = (~group) & 0x07;/* È¡ï¿½ï¿½ï¿½ï¿½Î» */
     temp1 <<= 8;
-    temp = SCB->AIRCR;      /* ¶ÁÈ¡ÏÈÇ°µÄÉèÖÃ */
-    temp &= 0X0000F8FF;     /* Çå¿ÕÏÈÇ°·Ö×é */
-    temp |= 0X05FA0000;     /* Ð´ÈëÔ¿³× */
+    temp = SCB->AIRCR;      /* ï¿½ï¿½È¡ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    temp &= 0X0000F8FF;     /* ï¿½ï¿½ï¿½ï¿½ï¿½Ç°ï¿½ï¿½ï¿½ï¿½ */
+    temp |= 0X05FA0000;     /* Ð´ï¿½ï¿½Ô¿ï¿½ï¿½ */
     temp |= temp1;
-    SCB->AIRCR = temp;      /* ÉèÖÃ·Ö×é */
+    SCB->AIRCR = temp;      /* ï¿½ï¿½ï¿½Ã·ï¿½ï¿½ï¿½ */
 }
 
 /**
- * @brief       ÉèÖÃNVIC(°üÀ¨·Ö×é/ÇÀÕ¼ÓÅÏÈ¼¶/×ÓÓÅÏÈ¼¶µÈ)
- * @param       pprio: ÇÀÕ¼ÓÅÏÈ¼¶(PreemptionPriority)
- * @param       sprio: ×ÓÓÅÏÈ¼¶(SubPriority)
- * @param       ch: ÖÐ¶Ï±àºÅ(Channel)
- * @param       group: ÖÐ¶Ï·Ö×é
- *   @arg       0, ×é0: 0Î»ÇÀÕ¼ÓÅÏÈ¼¶, 4Î»×ÓÓÅÏÈ¼¶
- *   @arg       1, ×é1: 1Î»ÇÀÕ¼ÓÅÏÈ¼¶, 3Î»×ÓÓÅÏÈ¼¶
- *   @arg       2, ×é2: 2Î»ÇÀÕ¼ÓÅÏÈ¼¶, 2Î»×ÓÓÅÏÈ¼¶
- *   @arg       3, ×é3: 3Î»ÇÀÕ¼ÓÅÏÈ¼¶, 1Î»×ÓÓÅÏÈ¼¶
- *   @arg       4, ×é4: 4Î»ÇÀÕ¼ÓÅÏÈ¼¶, 0Î»×ÓÓÅÏÈ¼¶
- * @note        ×¢ÒâÓÅÏÈ¼¶²»ÄÜ³¬¹ýÉè¶¨µÄ×éµÄ·¶Î§! ·ñÔò»áÓÐÒâÏë²»µ½µÄ´íÎó
- * @retval      ÎÞ
+ * @brief       ï¿½ï¿½ï¿½ï¿½NVIC(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½È¼ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ï¿½ï¿½)
+ * @param       pprio: ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½È¼ï¿½(PreemptionPriority)
+ * @param       sprio: ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½(SubPriority)
+ * @param       ch: ï¿½Ð¶Ï±ï¿½ï¿½(Channel)
+ * @param       group: ï¿½Ð¶Ï·ï¿½ï¿½ï¿½
+ *   @arg       0, ï¿½ï¿½0: 0Î»ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½È¼ï¿½, 4Î»ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½
+ *   @arg       1, ï¿½ï¿½1: 1Î»ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½È¼ï¿½, 3Î»ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½
+ *   @arg       2, ï¿½ï¿½2: 2Î»ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½È¼ï¿½, 2Î»ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½
+ *   @arg       3, ï¿½ï¿½3: 3Î»ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½È¼ï¿½, 1Î»ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½
+ *   @arg       4, ï¿½ï¿½4: 4Î»ï¿½ï¿½Õ¼ï¿½ï¿½ï¿½È¼ï¿½, 0Î»ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½
+ * @note        ×¢ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ï¿½ï¿½ï¿½Ü³ï¿½ï¿½ï¿½ï¿½è¶¨ï¿½ï¿½ï¿½ï¿½Ä·ï¿½Î§! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë²»ï¿½ï¿½ï¿½Ä´ï¿½ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_nvic_init(uint8_t pprio, uint8_t sprio, uint8_t ch, uint8_t group)
 {
     uint32_t temp;
-    sys_nvic_priority_group_config(group);  /* ÉèÖÃ·Ö×é */
+    sys_nvic_priority_group_config(group);  /* ï¿½ï¿½ï¿½Ã·ï¿½ï¿½ï¿½ */
     temp = pprio << (4 - group);
     temp |= sprio & (0x0f >> group);
-    temp &= 0xf;                            /* È¡µÍËÄÎ» */
-    NVIC->ISER[ch / 32] |= 1 << (ch % 32);  /* Ê¹ÄÜÖÐ¶ÏÎ»(ÒªÇå³ýµÄ»°,ÉèÖÃICER¶ÔÓ¦Î»Îª1¼´¿É) */
-    NVIC->IP[ch] |= temp << 4;              /* ÉèÖÃÏìÓ¦ÓÅÏÈ¼¶ºÍÇÀ¶ÏÓÅÏÈ¼¶ */
+    temp &= 0xf;                            /* È¡ï¿½ï¿½ï¿½ï¿½Î» */
+    NVIC->ISER[ch / 32] |= 1 << (ch % 32);  /* Ê¹ï¿½ï¿½ï¿½Ð¶ï¿½Î»(Òªï¿½ï¿½ï¿½ï¿½Ä»ï¿½,ï¿½ï¿½ï¿½ï¿½ICERï¿½ï¿½Ó¦Î»Îª1ï¿½ï¿½ï¿½ï¿½) */
+    NVIC->IP[ch] |= temp << 4;              /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½È¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È¼ï¿½ */
 }
 
 /**
- * @brief       Íâ²¿ÖÐ¶ÏÅäÖÃº¯Êý, Ö»Õë¶ÔGPIOA~GPIOK
- * @note        ¸Ãº¯Êý»á×Ô¶¯¿ªÆô¶ÔÓ¦ÖÐ¶Ï, ÒÔ¼°ÆÁ±ÎÏß
- * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸Õë
- * @param       pinx: 0X0000~0XFFFF, Òý½ÅÎ»ÖÃ, Ã¿¸öÎ»´ú±íÒ»¸öIO, µÚ0Î»´ú±íPx0, µÚ1Î»´ú±íPx1, ÒÀ´ÎÀàÍÆ. ±ÈÈç0X0101, ´ú±íÍ¬Ê±ÉèÖÃPx0ºÍPx8.
+ * @brief       ï¿½â²¿ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½Ãºï¿½ï¿½ï¿½, Ö»ï¿½ï¿½ï¿½GPIOA~GPIOK
+ * @note        ï¿½Ãºï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ó¦ï¿½Ð¶ï¿½, ï¿½Ô¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸ï¿½ï¿½
+ * @param       pinx: 0X0000~0XFFFF, ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½, Ã¿ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½IO, ï¿½ï¿½0Î»ï¿½ï¿½ï¿½ï¿½Px0, ï¿½ï¿½1Î»ï¿½ï¿½ï¿½ï¿½Px1, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½. ï¿½ï¿½ï¿½ï¿½0X0101, ï¿½ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½ï¿½Px0ï¿½ï¿½Px8.
  *   @arg       SYS_GPIO_PIN0~SYS_GPIO_PIN15, 1<<0 ~ 1<<15
- * @param       tmode: 1~3, ´¥·¢Ä£Ê½
- *   @arg       SYS_GPIO_FTIR, 1, ÏÂ½µÑØ´¥·¢
- *   @arg       SYS_GPIO_RTIR, 2, ÉÏÉýÑØ´¥·¢
- *   @arg       SYS_GPIO_BTIR, 3, ÈÎÒâµçÆ½´¥·¢
- * @retval      ÎÞ
+ * @param       tmode: 1~3, ï¿½ï¿½ï¿½ï¿½Ä£Ê½
+ *   @arg       SYS_GPIO_FTIR, 1, ï¿½Â½ï¿½ï¿½Ø´ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_RTIR, 2, ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_BTIR, 3, ï¿½ï¿½ï¿½ï¿½ï¿½Æ½ï¿½ï¿½ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_nvic_ex_config(GPIO_TypeDef *p_gpiox, uint16_t pinx, uint8_t tmode)
 {
     uint8_t offset;
-    uint32_t gpio_num = 0;      /* gpio±àºÅ, 0~10, ´ú±íGPIOA~GPIOK */
+    uint32_t gpio_num = 0;      /* gpioï¿½ï¿½ï¿½, 0~10, ï¿½ï¿½ï¿½ï¿½GPIOA~GPIOK */
     uint32_t pinpos = 0, pos = 0, curpin = 0;
 
-    gpio_num = ((uint32_t)p_gpiox - (uint32_t)GPIOA) / 0X400 ;/* µÃµ½gpio±àºÅ */
-    RCC->APB4ENR |= 1 << 1;     /* SYSCFGEN = 1,Ê¹ÄÜSYSCFGÊ±ÖÓ */
+    gpio_num = ((uint32_t)p_gpiox - (uint32_t)GPIOA) / 0X400 ;/* ï¿½Ãµï¿½gpioï¿½ï¿½ï¿½ */
+    RCC->APB4ENR |= 1 << 1;     /* SYSCFGEN = 1,Ê¹ï¿½ï¿½SYSCFGÊ±ï¿½ï¿½ */
 
     for (pinpos = 0; pinpos < 16; pinpos++)
     {
-        pos = 1 << pinpos;      /* Ò»¸ö¸öÎ»¼ì²é */
-        curpin = pinx & pos;    /* ¼ì²éÒý½ÅÊÇ·ñÒªÉèÖÃ */
+        pos = 1 << pinpos;      /* Ò»ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ */
+        curpin = pinx & pos;    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½Òªï¿½ï¿½ï¿½ï¿½ */
 
-        if (curpin == pos)      /* ÐèÒªÉèÖÃ */
+        if (curpin == pos)      /* ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ */
         {
             offset = (pinpos % 4) * 4;
-            SYSCFG->EXTICR[pinpos / 4] &= ~(0x000F << offset);  /* Çå³ýÔ­À´ÉèÖÃ£¡£¡£¡ */
-            SYSCFG->EXTICR[pinpos / 4] |= gpio_num << offset;   /* EXTI.BITxÓ³Éäµ½gpiox.bitx */
+            SYSCFG->EXTICR[pinpos / 4] &= ~(0x000F << offset);  /* ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½Ã£ï¿½ï¿½ï¿½ï¿½ï¿½ */
+            SYSCFG->EXTICR[pinpos / 4] |= gpio_num << offset;   /* EXTI.BITxÓ³ï¿½äµ½gpiox.bitx */
 
-            EXTI_D1->IMR1 |= 1 << pinpos;   /* ¿ªÆôline BITxÉÏµÄÖÐ¶Ï(Èç¹ûÒª½ûÖ¹ÖÐ¶Ï£¬Ôò·´²Ù×÷¼´¿É) */
+            EXTI_D1->IMR1 |= 1 << pinpos;   /* ï¿½ï¿½ï¿½ï¿½line BITxï¿½Ïµï¿½ï¿½Ð¶ï¿½(ï¿½ï¿½ï¿½Òªï¿½ï¿½Ö¹ï¿½Ð¶Ï£ï¿½ï¿½ò·´²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½) */
 
-            if (tmode & 0x01) EXTI->FTSR1 |= 1 << pinpos;       /* line bitxÉÏÊÂ¼þÏÂ½µÑØ´¥·¢ */
-            if (tmode & 0x02) EXTI->RTSR1 |= 1 << pinpos;       /* line bitxÉÏÊÂ¼þÉÏÉýÑØ´¥·¢ */
+            if (tmode & 0x01) EXTI->FTSR1 |= 1 << pinpos;       /* line bitxï¿½ï¿½ï¿½Â¼ï¿½ï¿½Â½ï¿½ï¿½Ø´ï¿½ï¿½ï¿½ */
+            if (tmode & 0x02) EXTI->RTSR1 |= 1 << pinpos;       /* line bitxï¿½ï¿½ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ø´ï¿½ï¿½ï¿½ */
         }
     }
 }
 
 /**
- * @brief       GPIO¸´ÓÃ¹¦ÄÜÑ¡ÔñÉèÖÃ
- * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸Õë
- * @param       pinx: 0X0000~0XFFFF, Òý½ÅÎ»ÖÃ, Ã¿¸öÎ»´ú±íÒ»¸öIO, µÚ0Î»´ú±íPx0, µÚ1Î»´ú±íPx1, ÒÀ´ÎÀàÍÆ. ±ÈÈç0X0101, ´ú±íÍ¬Ê±ÉèÖÃPx0ºÍPx8.
+ * @brief       GPIOï¿½ï¿½ï¿½Ã¹ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸ï¿½ï¿½
+ * @param       pinx: 0X0000~0XFFFF, ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½, Ã¿ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½IO, ï¿½ï¿½0Î»ï¿½ï¿½ï¿½ï¿½Px0, ï¿½ï¿½1Î»ï¿½ï¿½ï¿½ï¿½Px1, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½. ï¿½ï¿½ï¿½ï¿½0X0101, ï¿½ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½ï¿½Px0ï¿½ï¿½Px8.
  *   @arg       SYS_GPIO_PIN0~SYS_GPIO_PIN15, 1<<0 ~ 1<<15
- * @param       afx:0~15, ´ú±íAF0~AF15.
- *              AF0~15ÉèÖÃÇé¿ö(ÕâÀï½öÊÇÁÐ³ö³£ÓÃµÄ, ÏêÏ¸µÄÇë¼ûSTM32H743xxÊý¾ÝÊÖ²á, Table 10~20):
+ * @param       afx:0~15, ï¿½ï¿½ï¿½ï¿½AF0~AF15.
+ *              AF0~15ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð³ï¿½ï¿½ï¿½ï¿½Ãµï¿½, ï¿½ï¿½Ï¸ï¿½ï¿½ï¿½ï¿½ï¿½STM32H743xxï¿½ï¿½ï¿½ï¿½ï¿½Ö²ï¿½, Table 10~20):
  *   @arg       AF0: MCO/SWD/SWCLK/RTC;        AF1: TIM1/2/TIM16/17/LPTIM1;     AF2: TIM3~5/TIM12/HRTIM1/SAI1;   AF3: TIM8/LPTIM2~5/HRTIM1/LPUART1;
  *   @arg       AF4: I2C1~I2C4/TIM15/USART1;   AF5: SPI1~SPI6/CEC;              AF6: SPI3/SAI1/3/UART4/I2C4;     AF7: SPI2/3/6/USART1~3/6/UART7/SDMMC1;
  *   @arg       AF8: USART4/5/8/SPDIF/SAI2/4;  AF9; FDCAN1~2/TIM13/14/LCD/QSPI; AF10: USB_OTG1/2/SAI2/4/QSPI;    AF11: ETH/UART7/SDMMC2/I2C4;
  *   @arg       AF12: FMC/SDMMC1/USB_OTG1/LCD; AF13: DCIM/LCD/COMP1/2;          AF14: LCD/UART5;                 AF15: EVENTOUT;
- * @retval      ÎÞ
+ * @retval      ï¿½ï¿½
  */
 void sys_gpio_af_set(GPIO_TypeDef *p_gpiox, uint16_t pinx, uint8_t afx)
 {
@@ -127,10 +127,10 @@ void sys_gpio_af_set(GPIO_TypeDef *p_gpiox, uint16_t pinx, uint8_t afx)
 
     for (pinpos = 0; pinpos < 16; pinpos++)
     {
-        pos = 1 << pinpos;      /* Ò»¸ö¸öÎ»¼ì²é */
-        curpin = pinx & pos;    /* ¼ì²éÒý½ÅÊÇ·ñÒªÉèÖÃ */
+        pos = 1 << pinpos;      /* Ò»ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ */
+        curpin = pinx & pos;    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½Òªï¿½ï¿½ï¿½ï¿½ */
 
-        if (curpin == pos)      /* ÐèÒªÉèÖÃ */
+        if (curpin == pos)      /* ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ */
         {
             p_gpiox->AFR[pinpos >> 3] &= ~(0X0F << ((pinpos & 0X07) * 4));
             p_gpiox->AFR[pinpos >> 3] |= (uint32_t)afx << ((pinpos & 0X07) * 4);
@@ -139,35 +139,35 @@ void sys_gpio_af_set(GPIO_TypeDef *p_gpiox, uint16_t pinx, uint8_t afx)
 }
 
 /**
- * @brief       GPIOÍ¨ÓÃÉèÖÃ
- * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸Õë
- * @param       pinx: 0X0000~0XFFFF, Òý½ÅÎ»ÖÃ, Ã¿¸öÎ»´ú±íÒ»¸öIO, µÚ0Î»´ú±íPx0, µÚ1Î»´ú±íPx1, ÒÀ´ÎÀàÍÆ. ±ÈÈç0X0101, ´ú±íÍ¬Ê±ÉèÖÃPx0ºÍPx8.
+ * @brief       GPIOÍ¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸ï¿½ï¿½
+ * @param       pinx: 0X0000~0XFFFF, ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½, Ã¿ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½IO, ï¿½ï¿½0Î»ï¿½ï¿½ï¿½ï¿½Px0, ï¿½ï¿½1Î»ï¿½ï¿½ï¿½ï¿½Px1, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½. ï¿½ï¿½ï¿½ï¿½0X0101, ï¿½ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½ï¿½Px0ï¿½ï¿½Px8.
  *   @arg       SYS_GPIO_PIN0~SYS_GPIO_PIN15, 1<<0 ~ 1<<15
  *
- * @param       mode: 0~3; Ä£Ê½Ñ¡Ôñ, ÉèÖÃÈçÏÂ:
- *   @arg       SYS_GPIO_MODE_IN,  0, ÊäÈëÄ£Ê½(ÏµÍ³¸´Î»Ä¬ÈÏ×´Ì¬)
- *   @arg       SYS_GPIO_MODE_OUT, 1, Êä³öÄ£Ê½
- *   @arg       SYS_GPIO_MODE_AF,  2, ¸´ÓÃ¹¦ÄÜÄ£Ê½
- *   @arg       SYS_GPIO_MODE_AIN, 3, Ä£ÄâÊäÈëÄ£Ê½
+ * @param       mode: 0~3; Ä£Ê½Ñ¡ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+ *   @arg       SYS_GPIO_MODE_IN,  0, ï¿½ï¿½ï¿½ï¿½Ä£Ê½(ÏµÍ³ï¿½ï¿½Î»Ä¬ï¿½ï¿½×´Ì¬)
+ *   @arg       SYS_GPIO_MODE_OUT, 1, ï¿½ï¿½ï¿½Ä£Ê½
+ *   @arg       SYS_GPIO_MODE_AF,  2, ï¿½ï¿½ï¿½Ã¹ï¿½ï¿½ï¿½Ä£Ê½
+ *   @arg       SYS_GPIO_MODE_AIN, 3, Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½
  *
- * @param       otype: 0 / 1; Êä³öÀàÐÍÑ¡Ôñ, ÉèÖÃÈçÏÂ:
- *   @arg       SYS_GPIO_OTYPE_PP, 0, ÍÆÍìÊä³ö
- *   @arg       SYS_GPIO_OTYPE_OD, 1, ¿ªÂ©Êä³ö
+ * @param       otype: 0 / 1; ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+ *   @arg       SYS_GPIO_OTYPE_PP, 0, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_OTYPE_OD, 1, ï¿½ï¿½Â©ï¿½ï¿½ï¿½
  *
- * @param       ospeed: 0~3; Êä³öËÙ¶È, ÉèÖÃÈçÏÂ:
- *   @arg       SYS_GPIO_SPEED_LOW,  0, µÍËÙ
- *   @arg       SYS_GPIO_SPEED_MID,  1, ÖÐËÙ
- *   @arg       SYS_GPIO_SPEED_FAST, 2, ¿ìËÙ
- *   @arg       SYS_GPIO_SPEED_HIGH, 3, ¸ßËÙ
+ * @param       ospeed: 0~3; ï¿½ï¿½ï¿½ï¿½Ù¶ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+ *   @arg       SYS_GPIO_SPEED_LOW,  0, ï¿½ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_SPEED_MID,  1, ï¿½ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_SPEED_FAST, 2, ï¿½ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_SPEED_HIGH, 3, ï¿½ï¿½ï¿½ï¿½
  *
- * @param       pupd: 0~3: ÉÏÏÂÀ­ÉèÖÃ, ÉèÖÃÈçÏÂ:
- *   @arg       SYS_GPIO_PUPD_NONE, 0, ²»´øÉÏÏÂÀ­
- *   @arg       SYS_GPIO_PUPD_PU,   1, ÉÏÀ­
- *   @arg       SYS_GPIO_PUPD_PD,   2, ÏÂÀ­
- *   @arg       SYS_GPIO_PUPD_RES,  3, ±£Áô
+ * @param       pupd: 0~3: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+ *   @arg       SYS_GPIO_PUPD_NONE, 0, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_PUPD_PU,   1, ï¿½ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_PUPD_PD,   2, ï¿½ï¿½ï¿½ï¿½
+ *   @arg       SYS_GPIO_PUPD_RES,  3, ï¿½ï¿½ï¿½ï¿½
  *
- * @note:       ×¢Òâ: ÔÚÊäÈëÄ£Ê½(ÆÕÍ¨ÊäÈë/Ä£ÄâÊäÈë)ÏÂ, OTYPEºÍOSPEED²ÎÊýÎÞÐ§!!
- * @retval      ÎÞ
+ * @note:       ×¢ï¿½ï¿½: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½(ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½/Ä£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½, OTYPEï¿½ï¿½OSPEEDï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð§!!
+ * @retval      ï¿½ï¿½
  */
 void sys_gpio_set(GPIO_TypeDef *p_gpiox, uint16_t pinx, uint32_t mode, uint32_t otype, uint32_t ospeed, uint32_t pupd)
 {
@@ -175,73 +175,73 @@ void sys_gpio_set(GPIO_TypeDef *p_gpiox, uint16_t pinx, uint32_t mode, uint32_t 
 
     for (pinpos = 0; pinpos < 16; pinpos++)
     {
-        pos = 1 << pinpos;      /* Ò»¸ö¸öÎ»¼ì²é */
-        curpin = pinx & pos;    /* ¼ì²éÒý½ÅÊÇ·ñÒªÉèÖÃ */
+        pos = 1 << pinpos;      /* Ò»ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ */
+        curpin = pinx & pos;    /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½Òªï¿½ï¿½ï¿½ï¿½ */
 
-        if (curpin == pos)      /* ÐèÒªÉèÖÃ */
+        if (curpin == pos)      /* ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½ */
         {
-            p_gpiox->MODER &= ~(3 << (pinpos * 2)); /* ÏÈÇå³ýÔ­À´µÄÉèÖÃ */
-            p_gpiox->MODER |= mode << (pinpos * 2); /* ÉèÖÃÐÂµÄÄ£Ê½ */
+            p_gpiox->MODER &= ~(3 << (pinpos * 2)); /* ï¿½ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+            p_gpiox->MODER |= mode << (pinpos * 2); /* ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½Ä£Ê½ */
 
-            if ((mode == 0X01) || (mode == 0X02))   /* Èç¹ûÊÇÊä³öÄ£Ê½/¸´ÓÃ¹¦ÄÜÄ£Ê½ */
+            if ((mode == 0X01) || (mode == 0X02))   /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½/ï¿½ï¿½ï¿½Ã¹ï¿½ï¿½ï¿½Ä£Ê½ */
             {
-                p_gpiox->OSPEEDR &= ~(3 << (pinpos * 2));       /* Çå³ýÔ­À´µÄÉèÖÃ */
-                p_gpiox->OSPEEDR |= (ospeed << (pinpos * 2));   /* ÉèÖÃÐÂµÄËÙ¶ÈÖµ */
-                p_gpiox->OTYPER &= ~(1 << pinpos) ;             /* Çå³ýÔ­À´µÄÉèÖÃ */
-                p_gpiox->OTYPER |= otype << pinpos;             /* ÉèÖÃÐÂµÄÊä³öÄ£Ê½ */
+                p_gpiox->OSPEEDR &= ~(3 << (pinpos * 2));       /* ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+                p_gpiox->OSPEEDR |= (ospeed << (pinpos * 2));   /* ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½ï¿½Ù¶ï¿½Öµ */
+                p_gpiox->OTYPER &= ~(1 << pinpos) ;             /* ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+                p_gpiox->OTYPER |= otype << pinpos;             /* ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½ï¿½ï¿½ï¿½Ä£Ê½ */
             }
 
-            p_gpiox->PUPDR &= ~(3 << (pinpos * 2)); /* ÏÈÇå³ýÔ­À´µÄÉèÖÃ */
-            p_gpiox->PUPDR |= pupd << (pinpos * 2); /* ÉèÖÃÐÂµÄÉÏÏÂÀ­ */
+            p_gpiox->PUPDR &= ~(3 << (pinpos * 2)); /* ï¿½ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+            p_gpiox->PUPDR |= pupd << (pinpos * 2); /* ï¿½ï¿½ï¿½ï¿½ï¿½Âµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
         }
     }
 }
 
 /**
- * @brief       ÉèÖÃGPIOÄ³¸öÒý½ÅµÄÊä³ö×´Ì¬
- * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸Õë
- * @param       0X0000~0XFFFF, Òý½ÅÎ»ÖÃ, Ã¿¸öÎ»´ú±íÒ»¸öIO, µÚ0Î»´ú±íPx0, µÚ1Î»´ú±íPx1, ÒÀ´ÎÀàÍÆ. ±ÈÈç0X0101, ´ú±íÍ¬Ê±ÉèÖÃPx0ºÍPx8.
+ * @brief       ï¿½ï¿½ï¿½ï¿½GPIOÄ³ï¿½ï¿½ï¿½ï¿½ï¿½Åµï¿½ï¿½ï¿½ï¿½×´Ì¬
+ * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸ï¿½ï¿½
+ * @param       0X0000~0XFFFF, ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½, Ã¿ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½IO, ï¿½ï¿½0Î»ï¿½ï¿½ï¿½ï¿½Px0, ï¿½ï¿½1Î»ï¿½ï¿½ï¿½ï¿½Px1, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½. ï¿½ï¿½ï¿½ï¿½0X0101, ï¿½ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½ï¿½Px0ï¿½ï¿½Px8.
  *   @arg       SYS_GPIO_PIN0~SYS_GPIO_PIN15, 1<<0 ~ 1<<15
- * @param       status: 0/1, Òý½Å×´Ì¬(½ö×îµÍÎ»ÓÐÐ§), ÉèÖÃÈçÏÂ:
- *   @arg       0, Êä³öµÍµçÆ½
- *   @arg       1, Êä³ö¸ßµçÆ½
- * @retval      ÎÞ
+ * @param       status: 0/1, ï¿½ï¿½ï¿½ï¿½×´Ì¬(ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½Ð§), ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+ *   @arg       0, ï¿½ï¿½ï¿½ï¿½Íµï¿½Æ½
+ *   @arg       1, ï¿½ï¿½ï¿½ï¿½ßµï¿½Æ½
+ * @retval      ï¿½ï¿½
  */
 void sys_gpio_pin_set(GPIO_TypeDef *p_gpiox, uint16_t pinx, uint8_t status)
 {
     if (status & 0X01)
     {
-        p_gpiox->BSRR |= pinx;                   /* ÉèÖÃGPIOxµÄpinxÎª1 */
+        p_gpiox->BSRR |= pinx;                   /* ï¿½ï¿½ï¿½ï¿½GPIOxï¿½ï¿½pinxÎª1 */
     }
     else
     {
-        p_gpiox->BSRR |= (uint32_t)pinx << 16;   /* ÉèÖÃGPIOxµÄpinxÎª0 */
+        p_gpiox->BSRR |= (uint32_t)pinx << 16;   /* ï¿½ï¿½ï¿½ï¿½GPIOxï¿½ï¿½pinxÎª0 */
     }
 }
 
 /**
- * @brief       ¶ÁÈ¡GPIOÄ³¸öÒý½ÅµÄ×´Ì¬
- * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸Õë
- * @param       0X0000~0XFFFF, Òý½ÅÎ»ÖÃ, Ã¿¸öÎ»´ú±íÒ»¸öIO, µÚ0Î»´ú±íPx0, µÚ1Î»´ú±íPx1, ÒÀ´ÎÀàÍÆ. ±ÈÈç0X0101, ´ú±íÍ¬Ê±ÉèÖÃPx0ºÍPx8.
+ * @brief       ï¿½ï¿½È¡GPIOÄ³ï¿½ï¿½ï¿½ï¿½ï¿½Åµï¿½×´Ì¬
+ * @param       p_gpiox: GPIOA~GPIOK, GPIOÖ¸ï¿½ï¿½
+ * @param       0X0000~0XFFFF, ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½, Ã¿ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½IO, ï¿½ï¿½0Î»ï¿½ï¿½ï¿½ï¿½Px0, ï¿½ï¿½1Î»ï¿½ï¿½ï¿½ï¿½Px1, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½. ï¿½ï¿½ï¿½ï¿½0X0101, ï¿½ï¿½ï¿½ï¿½Í¬Ê±ï¿½ï¿½ï¿½ï¿½Px0ï¿½ï¿½Px8.
  *   @arg       SYS_GPIO_PIN0~SYS_GPIO_PIN15, 1<<0 ~ 1<<15
- * @retval      ·µ»ØÒý½Å×´Ì¬, 0, µÍµçÆ½; 1, ¸ßµçÆ½
+ * @retval      ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬, 0, ï¿½Íµï¿½Æ½; 1, ï¿½ßµï¿½Æ½
  */
 uint8_t sys_gpio_pin_get(GPIO_TypeDef *p_gpiox, uint16_t pinx)
 {
     if (p_gpiox->IDR & pinx)
     {
-        return 1;   /* pinxµÄ×´Ì¬Îª1 */
+        return 1;   /* pinxï¿½ï¿½×´Ì¬Îª1 */
     }
     else
     {
-        return 0;   /* pinxµÄ×´Ì¬Îª0 */
+        return 0;   /* pinxï¿½ï¿½×´Ì¬Îª0 */
     }
 }
 
 /**
- * @brief       Ö´ÐÐ: WFIÖ¸Áî(Ö´ÐÐÍê¸ÃÖ¸Áî½øÈëµÍ¹¦ºÄ×´Ì¬, µÈ´ýÖÐ¶Ï»½ÐÑ)
- * @param       ÎÞ
- * @retval      ÎÞ
+ * @brief       Ö´ï¿½ï¿½: WFIÖ¸ï¿½ï¿½(Ö´ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½Í¹ï¿½ï¿½ï¿½×´Ì¬, ï¿½È´ï¿½ï¿½Ð¶Ï»ï¿½ï¿½ï¿½)
+ * @param       ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_wfi_set(void)
 {
@@ -249,9 +249,9 @@ void sys_wfi_set(void)
 }
 
 /**
- * @brief       ¹Ø±ÕËùÓÐÖÐ¶Ï(µ«ÊÇ²»°üÀ¨faultºÍNMIÖÐ¶Ï)
- * @param       ÎÞ
- * @retval      ÎÞ
+ * @brief       ï¿½Ø±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½(ï¿½ï¿½ï¿½Ç²ï¿½ï¿½ï¿½ï¿½ï¿½faultï¿½ï¿½NMIï¿½Ð¶ï¿½)
+ * @param       ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_intx_disable(void)
 {
@@ -259,9 +259,9 @@ void sys_intx_disable(void)
 }
 
 /**
- * @brief       ¿ªÆôËùÓÐÖÐ¶Ï
- * @param       ÎÞ
- * @retval      ÎÞ
+ * @brief       ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½
+ * @param       ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_intx_enable(void)
 {
@@ -269,37 +269,37 @@ void sys_intx_enable(void)
 }
 
 /**
- * @brief       ÉèÖÃÕ»¶¥µØÖ·
- * @param       addr: Õ»¶¥µØÖ·
- * @retval      ÎÞ
+ * @brief       ï¿½ï¿½ï¿½ï¿½Õ»ï¿½ï¿½ï¿½ï¿½Ö·
+ * @param       addr: Õ»ï¿½ï¿½ï¿½ï¿½Ö·
+ * @retval      ï¿½ï¿½
  */
 void sys_msr_msp(uint32_t addr)
 {
-    __set_MSP(addr);     /* ÉèÖÃÕ»¶¥µØÖ· */
+    __set_MSP(addr);     /* ï¿½ï¿½ï¿½ï¿½Õ»ï¿½ï¿½ï¿½ï¿½Ö· */
 }
 
 /**
- * @brief       ½øÈë´ý»úÄ£Ê½
- * @param       ÎÞ
- * @retval      ÎÞ
+ * @brief       ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½
+ * @param       ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_standby(void)
 {
-    PWR->WKUPEPR &= ~(1 << 0);  /* WKUPEN1 = 0, PA0²»ÓÃÓÚWKUP»½ÐÑ */
-    PWR->WKUPEPR |= 1 << 0;     /* WKUPEN1 = 1, PA0ÓÃÓÚWKUP»½ÐÑ */
-    PWR->WKUPEPR &= ~(1 << 8);  /* WKUPP1 = 0, PA0¸ßµçÆ½»½ÐÑ(ÉÏÉýÑØ) */
-    PWR->WKUPEPR &= ~(3 << 16); /* Çå³ýWKUPPUPD1Ô­À´µÄÉèÖÃ */
-    PWR->WKUPEPR |= 2 << 16;    /* WKUPPUPD1 = 10, PA0ÏÂÀ­ */
-    PWR->WKUPCR |= 0X3F << 0;   /* Çå³ýËùÓÐWKUP»½ÐÑÒý½Å±êÖ¾ */
-    PWR->CPUCR |= 7 << 0;       /* PDDS_D1/D2/D3 = 1, ÔÚD1/D2/D3Óò½øÈëÉî¶ÈË¯ÃßÊ±ÔÊÐíDStandbyÄ£Ê½ */
-    SCB->SCR |= 1 << 2;         /* Ê¹ÄÜSLEEPDEEPÎ» (SYS->CTRL) */
-    sys_wfi_set();              /* Ö´ÐÐWFIÖ¸Áî, ½øÈë´ý»úÄ£Ê½ */
+    PWR->WKUPEPR &= ~(1 << 0);  /* WKUPEN1 = 0, PA0ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½WKUPï¿½ï¿½ï¿½ï¿½ */
+    PWR->WKUPEPR |= 1 << 0;     /* WKUPEN1 = 1, PA0ï¿½ï¿½ï¿½ï¿½WKUPï¿½ï¿½ï¿½ï¿½ */
+    PWR->WKUPEPR &= ~(1 << 8);  /* WKUPP1 = 0, PA0ï¿½ßµï¿½Æ½ï¿½ï¿½ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½) */
+    PWR->WKUPEPR &= ~(3 << 16); /* ï¿½ï¿½ï¿½WKUPPUPD1Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    PWR->WKUPEPR |= 2 << 16;    /* WKUPPUPD1 = 10, PA0ï¿½ï¿½ï¿½ï¿½ */
+    PWR->WKUPCR |= 0X3F << 0;   /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½WKUPï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å±ï¿½Ö¾ */
+    PWR->CPUCR |= 7 << 0;       /* PDDS_D1/D2/D3 = 1, ï¿½ï¿½D1/D2/D3ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë¯ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½DStandbyÄ£Ê½ */
+    SCB->SCR |= 1 << 2;         /* Ê¹ï¿½ï¿½SLEEPDEEPÎ» (SYS->CTRL) */
+    sys_wfi_set();              /* Ö´ï¿½ï¿½WFIÖ¸ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä£Ê½ */
 }
 
 /**
- * @brief       ÏµÍ³Èí¸´Î»
- * @param       ÎÞ
- * @retval      ÎÞ
+ * @brief       ÏµÍ³ï¿½ï¿½ï¿½ï¿½Î»
+ * @param       ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_soft_reset(void)
 {
@@ -307,47 +307,47 @@ void sys_soft_reset(void)
 }
 
 /**
- * @brief       Ê¹ÄÜSTM32H7µÄL1-Cache, Í¬Ê±¿ªÆôD cacheµÄÇ¿ÖÆÍ¸Ð´
- * @param       ÎÞ
- * @retval      ÎÞ
+ * @brief       Ê¹ï¿½ï¿½STM32H7ï¿½ï¿½L1-Cache, Í¬Ê±ï¿½ï¿½ï¿½ï¿½D cacheï¿½ï¿½Ç¿ï¿½ï¿½Í¸Ð´
+ * @param       ï¿½ï¿½
+ * @retval      ï¿½ï¿½
  */
 void sys_cache_enable(void)
 {
-    SCB_EnableICache(); /* Ê¹ÄÜI-Cache,º¯ÊýÔÚcore_cm7.hÀïÃæ¶¨Òå */
-    SCB_EnableDCache(); /* Ê¹ÄÜD-Cache,º¯ÊýÔÚcore_cm7.hÀïÃæ¶¨Òå */
-    SCB->CACR |= 1 << 2;/* Ç¿ÖÆD-CacheÍ¸Ð´,Èç²»¿ªÆôÍ¸Ð´,Êµ¼ÊÊ¹ÓÃÖÐ¿ÉÄÜÓöµ½¸÷ÖÖÎÊÌâ */
+    SCB_EnableICache(); /* Ê¹ï¿½ï¿½I-Cache,ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½core_cm7.hï¿½ï¿½ï¿½æ¶¨ï¿½ï¿½ */
+    //SCB_EnableDCache(); /* Ê¹ï¿½ï¿½D-Cache,ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½core_cm7.hï¿½ï¿½ï¿½æ¶¨ï¿½ï¿½ */
+    SCB->CACR |= 1 << 2;/* Ç¿ï¿½ï¿½D-CacheÍ¸Ð´,ï¿½ç²»ï¿½ï¿½ï¿½ï¿½Í¸Ð´,Êµï¿½ï¿½Ê¹ï¿½ï¿½ï¿½Ð¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
 }
 
 /**
- * @brief       Ê±ÖÓÉèÖÃº¯Êý
- * @param       plln: PLL1 VCOµÄ±¶ÆµÏµÊý(PLL±¶Æµ), È¡Öµ·¶Î§: 4~512.
- * @param       pllm: PLL1Ô¤·ÖÆµÏµÊý(½øPLLÖ®Ç°µÄ·ÖÆµ), È¡Öµ·¶Î§: 1~63.
- * @param       pllp: PLL1µÄp·ÖÆµÏµÊý(PLLÖ®ºóµÄ·ÖÆµ), ·ÖÆµºó×÷ÎªÏµÍ³Ê±ÖÓ, È¡Öµ·¶Î§: 1~128.(³ý1Íâ²»ÄÜÎªÆæÊý)
- * @param       pllq: PLL1µÄq·ÖÆµÏµÊý(PLLÖ®ºóµÄ·ÖÆµ), È¡Öµ·¶Î§: 1~128.
+ * @brief       Ê±ï¿½ï¿½ï¿½ï¿½ï¿½Ãºï¿½ï¿½ï¿½
+ * @param       plln: PLL1 VCOï¿½Ä±ï¿½ÆµÏµï¿½ï¿½(PLLï¿½ï¿½Æµ), È¡Öµï¿½ï¿½Î§: 4~512.
+ * @param       pllm: PLL1Ô¤ï¿½ï¿½ÆµÏµï¿½ï¿½(ï¿½ï¿½PLLÖ®Ç°ï¿½Ä·ï¿½Æµ), È¡Öµï¿½ï¿½Î§: 1~63.
+ * @param       pllp: PLL1ï¿½ï¿½pï¿½ï¿½ÆµÏµï¿½ï¿½(PLLÖ®ï¿½ï¿½Ä·ï¿½Æµ), ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½ÎªÏµÍ³Ê±ï¿½ï¿½, È¡Öµï¿½ï¿½Î§: 1~128.(ï¿½ï¿½1ï¿½â²»ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½)
+ * @param       pllq: PLL1ï¿½ï¿½qï¿½ï¿½ÆµÏµï¿½ï¿½(PLLÖ®ï¿½ï¿½Ä·ï¿½Æµ), È¡Öµï¿½ï¿½Î§: 1~128.
  * @note
  *
- *              Fvco: VCOÆµÂÊ
- *              Fsys: ÏµÍ³Ê±ÖÓÆµÂÊ, Ò²ÊÇPLL1µÄp·ÖÆµÊä³öÊ±ÖÓÆµÂÊ
- *              Fq:   PLL1µÄq·ÖÆµÊä³öÊ±ÖÓÆµÂÊ
- *              Fs:   PLLÊäÈëÊ±ÖÓÆµÂÊ, ¿ÉÒÔÊÇHSI, CSI, HSEµÈ.
+ *              Fvco: VCOÆµï¿½ï¿½
+ *              Fsys: ÏµÍ³Ê±ï¿½ï¿½Æµï¿½ï¿½, Ò²ï¿½ï¿½PLL1ï¿½ï¿½pï¿½ï¿½Æµï¿½ï¿½ï¿½Ê±ï¿½ï¿½Æµï¿½ï¿½
+ *              Fq:   PLL1ï¿½ï¿½qï¿½ï¿½Æµï¿½ï¿½ï¿½Ê±ï¿½ï¿½Æµï¿½ï¿½
+ *              Fs:   PLLï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Æµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½HSI, CSI, HSEï¿½ï¿½.
  *              Fvco = Fs * (plln / pllm);
  *              Fsys = Fvco / pllp = Fs * (plln / (pllm * pllp));
  *              Fq   = Fvco / pllq = Fs * (plln / (pllm * pllq));
  *
- *              Íâ²¿¾§ÕñÎª25MµÄÊ±ºò, ÍÆ¼öÖµ: plln = 192, pllm = 5, pllp = 2, pllq = 4.
- *              µÃµ½:Fvco = 25 * (192 / 5) = 960Mhz
+ *              ï¿½â²¿ï¿½ï¿½ï¿½ï¿½Îª25Mï¿½ï¿½Ê±ï¿½ï¿½, ï¿½Æ¼ï¿½Öµ: plln = 192, pllm = 5, pllp = 2, pllq = 4.
+ *              ï¿½Ãµï¿½:Fvco = 25 * (192 / 5) = 960Mhz
  *                   Fsys = pll1_p_ck = 960 / 2 = 480Mhz
  *                   Fq   = pll1_q_ck = 960 / 4 = 240Mhz
  *
- *              H743Ä¬ÈÏÐèÒªÅäÖÃµÄÆµÂÊÈçÏÂ:
- *              CPUÆµÂÊ(rcc_c_ck) = sys_d1cpre_ck = 480Mhz
+ *              H743Ä¬ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½Ãµï¿½Æµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½:
+ *              CPUÆµï¿½ï¿½(rcc_c_ck) = sys_d1cpre_ck = 480Mhz
  *              rcc_aclk = rcc_hclk3 = 240Mhz
  *              AHB1/2/3/4(rcc_hclk1/2/3/4) = 240Mhz
  *              APB1/2/3/4(rcc_pclk1/2/3/4) = 120Mhz
  *              pll2_p_ck = (25 / 25) * 440 / 2) = 220Mhz
- *              pll2_r_ck = FMCÊ±ÖÓÆµÂÊ = ((25 / 25) * 440 / 2) = 220Mhz
+ *              pll2_r_ck = FMCÊ±ï¿½ï¿½Æµï¿½ï¿½ = ((25 / 25) * 440 / 2) = 220Mhz
  *
- * @retval      ´íÎó´úÂë: 0, ³É¹¦; 1, HSE´íÎó; 2, PLL1´íÎó; 3, PLL2´íÎó; 4, ÇÐ»»Ê±ÖÓ´íÎó;
+ * @retval      ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½: 0, ï¿½É¹ï¿½; 1, HSEï¿½ï¿½ï¿½ï¿½; 2, PLL1ï¿½ï¿½ï¿½ï¿½; 3, PLL2ï¿½ï¿½ï¿½ï¿½; 4, ï¿½Ð»ï¿½Ê±ï¿½Ó´ï¿½ï¿½ï¿½;
  */
 uint8_t sys_clock_set(uint32_t plln, uint32_t pllm, uint32_t pllp, uint32_t pllq)
 {
@@ -355,144 +355,144 @@ uint8_t sys_clock_set(uint32_t plln, uint32_t pllm, uint32_t pllp, uint32_t pllq
     uint8_t retval = 0;
     uint8_t swsval = 0;
 
-    PWR->CR3 &= ~(1 << 2);      /* SCUEN = 0, Ëø¶¨LDOENºÍBYPASSÎ»µÄÉèÖÃ */
-    PWR->D3CR &= ~(3 << 14);    /* ÇåÁãVOS[1:0] */
-    PWR->D3CR |= 3 << 14;       /* VOS[1:0] = 3, µçÑ¹µ÷½ÚÑ¡ÔñScale1, Scale0ÐèÒªÔÚScale1Ä£Ê½ÖÐ¼¤»î */
+    PWR->CR3 &= ~(1 << 2);      /* SCUEN = 0, ï¿½ï¿½ï¿½ï¿½LDOENï¿½ï¿½BYPASSÎ»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+    PWR->D3CR &= ~(3 << 14);    /* ï¿½ï¿½ï¿½ï¿½VOS[1:0] */
+    PWR->D3CR |= 3 << 14;       /* VOS[1:0] = 3, ï¿½ï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½Ñ¡ï¿½ï¿½Scale1, Scale0ï¿½ï¿½Òªï¿½ï¿½Scale1Ä£Ê½ï¿½Ð¼ï¿½ï¿½ï¿½ */
   
-    /* 480M°æ±¾H743Ð¾Æ¬£¨V°æ±¾£©ÐÂÔöScale0ÉèÖÃ,×¢ÒâÔÚ½øÈëµÍ¹¦ºÄÄ£Ê½Ö®Ç°, ±ØÐëÏÈÍË³öScale0Ä£Ê½£¡£¡ */
-    RCC->APB4ENR |= 1 << 1;     /* Ê¹ÄÜSYSCFGÊ±ÖÓ */
-    SYSCFG->PWRCR |= 1 << 0;    /* ÉèÖÃODENÎ»Îª1, Ê¹ÄÜOverdriveÄ£Ê½, ´ËÊ±½øÈëScale0Ä£Ê½, VCORE = 1.35V */
+    /* 480Mï¿½æ±¾H743Ð¾Æ¬ï¿½ï¿½Vï¿½æ±¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Scale0ï¿½ï¿½ï¿½ï¿½,×¢ï¿½ï¿½ï¿½Ú½ï¿½ï¿½ï¿½Í¹ï¿½ï¿½ï¿½Ä£Ê½Ö®Ç°, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ë³ï¿½Scale0Ä£Ê½ï¿½ï¿½ï¿½ï¿½ */
+    RCC->APB4ENR |= 1 << 1;     /* Ê¹ï¿½ï¿½SYSCFGÊ±ï¿½ï¿½ */
+    SYSCFG->PWRCR |= 1 << 0;    /* ï¿½ï¿½ï¿½ï¿½ODENÎ»Îª1, Ê¹ï¿½ï¿½OverdriveÄ£Ê½, ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½Scale0Ä£Ê½, VCORE = 1.35V */
   
-    while ((PWR->D3CR & (1 << 13)) == 0);   /* µÈ´ýµçÑ¹ÎÈ¶¨ */
+    while ((PWR->D3CR & (1 << 13)) == 0);   /* ï¿½È´ï¿½ï¿½ï¿½Ñ¹ï¿½È¶ï¿½ */
 
-    RCC->CR |= 1 << 16;         /* HSEON = 1, ¿ªÆôHSE */
+    RCC->CR |= 1 << 16;         /* HSEON = 1, ï¿½ï¿½ï¿½ï¿½HSE */
 
     while (((RCC->CR & (1 << 17)) == 0) && (retry < 0X7FFF))
     {
-        retry++;                /* µÈ´ýHSE RDY */
+        retry++;                /* ï¿½È´ï¿½HSE RDY */
     }
 
     if (retry == 0X7FFF)
     {
-        retval = 1;             /* HSEÎÞ·¨¾ÍÐ÷ */
+        retval = 1;             /* HSEï¿½Þ·ï¿½ï¿½ï¿½ï¿½ï¿½ */
     }
     else
     {
-        RCC->PLLCKSELR |= 2 << 0;           /* PLLSRC[1:0] = 2, Ñ¡ÔñHSE×÷ÎªPLLµÄÊäÈëÊ±ÖÓÔ´ */
-        RCC->PLLCKSELR |= pllm << 4;        /* DIVM1[5:0] = pllm, ÉèÖÃPLL1µÄÔ¤·ÖÆµÏµÊý */
+        RCC->PLLCKSELR |= 2 << 0;           /* PLLSRC[1:0] = 2, Ñ¡ï¿½ï¿½HSEï¿½ï¿½ÎªPLLï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Ô´ */
+        RCC->PLLCKSELR |= pllm << 4;        /* DIVM1[5:0] = pllm, ï¿½ï¿½ï¿½ï¿½PLL1ï¿½ï¿½Ô¤ï¿½ï¿½ÆµÏµï¿½ï¿½ */
 
-        RCC->PLL1DIVR &= ~(0X1FF << 0);     /* Çå³ýDIVN1[8:0]Ô­À´µÄÉèÖÃ */      
-        RCC->PLL1DIVR |= (plln - 1) << 0;   /* DIVN1[8:0] = plln - 1, ÉèÖÃPLL1 VCOµÄ±¶ÆµÏµÊý, ÉèÖÃÖµÐè¼õ1 */
-        RCC->PLL1DIVR &= ~(0X7F << 9);      /* Çå³ýDIVP1[6:0]Ô­À´µÄÉèÖÃ */
-        RCC->PLL1DIVR |= (pllp - 1) << 9;   /* DIVP1[6:0] = pllp - 1, ÉèÖÃPLL1µÄp·ÖÆµÏµÊý, ÉèÖÃÖµÐè¼õ1 */
-        RCC->PLL1DIVR &= ~(0X7F << 16);     /* Çå³ýDIVQ1[6:0]Ô­À´µÄÉèÖÃ */
-        RCC->PLL1DIVR |= (pllq - 1) << 16;  /* DIVQ1[6:0] = pllq - 1, ÉèÖÃPLL1µÄq·ÖÆµÏµÊý, ÉèÖÃÖµÐè¼õ1 */
-        RCC->PLL1DIVR &= ~(0X7F << 24);     /* Çå³ýDIVR1[6:0]Ô­À´µÄÉèÖÃ */
-        RCC->PLL1DIVR |= 1 << 24;           /* DIVR1[6:0] = pllr - 1, ÉèÖÃPLL1µÄr·ÖÆµÏµÊý, ÉèÖÃÖµÐè¼õ1, r·ÖÆµ³öÀ´µÄÊ±ÖÓÃ»ÓÃµ½ */
+        RCC->PLL1DIVR &= ~(0X1FF << 0);     /* ï¿½ï¿½ï¿½DIVN1[8:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */      
+        RCC->PLL1DIVR |= (plln - 1) << 0;   /* DIVN1[8:0] = plln - 1, ï¿½ï¿½ï¿½ï¿½PLL1 VCOï¿½Ä±ï¿½ÆµÏµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½1 */
+        RCC->PLL1DIVR &= ~(0X7F << 9);      /* ï¿½ï¿½ï¿½DIVP1[6:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+        RCC->PLL1DIVR |= (pllp - 1) << 9;   /* DIVP1[6:0] = pllp - 1, ï¿½ï¿½ï¿½ï¿½PLL1ï¿½ï¿½pï¿½ï¿½ÆµÏµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½1 */
+        RCC->PLL1DIVR &= ~(0X7F << 16);     /* ï¿½ï¿½ï¿½DIVQ1[6:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+        RCC->PLL1DIVR |= (pllq - 1) << 16;  /* DIVQ1[6:0] = pllq - 1, ï¿½ï¿½ï¿½ï¿½PLL1ï¿½ï¿½qï¿½ï¿½ÆµÏµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½1 */
+        RCC->PLL1DIVR &= ~(0X7F << 24);     /* ï¿½ï¿½ï¿½DIVR1[6:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+        RCC->PLL1DIVR |= 1 << 24;           /* DIVR1[6:0] = pllr - 1, ï¿½ï¿½ï¿½ï¿½PLL1ï¿½ï¿½rï¿½ï¿½ÆµÏµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½1, rï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Ã»ï¿½Ãµï¿½ */
       
-        RCC->PLLCFGR |= 2 << 2;             /* PLL1RGE[1:0] = 2, PLL1ÊäÈëÊ±ÖÓÆµÂÊÔÚ4~8MhzÖ®¼ä(25 / 5 = 5Mhz), ÈçÐÞ¸Äpllm, ÇëÈ·ÈÏ´Ë²ÎÊý */
-        RCC->PLLCFGR |= 0 << 1;             /* PLL1VCOSEL = 0, PLL1µÄ¿íVCO·¶Î§, 192~836Mhz(Êµ¼Ê¿ÉÒÔµ½960, ÒÔÂú×ã480MÖ÷ÆµÉèÖÃÒªÇó) */
-        RCC->PLLCFGR |= 3 << 16;            /* DIVP1EN = 1, DIVQ1EN = 1, Ê¹ÄÜpll1_p_ckºÍpll1_q_ckÊä³ö */
-        RCC->CR |= 1 << 24;                 /* PLL1ON = 1, Ê¹ÄÜPLL1 */
+        RCC->PLLCFGR |= 2 << 2;             /* PLL1RGE[1:0] = 2, PLL1ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½4~8MhzÖ®ï¿½ï¿½(25 / 5 = 5Mhz), ï¿½ï¿½ï¿½Þ¸ï¿½pllm, ï¿½ï¿½È·ï¿½Ï´Ë²ï¿½ï¿½ï¿½ */
+        RCC->PLLCFGR |= 0 << 1;             /* PLL1VCOSEL = 0, PLL1ï¿½Ä¿ï¿½VCOï¿½ï¿½Î§, 192~836Mhz(Êµï¿½Ê¿ï¿½ï¿½Ôµï¿½960, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½480Mï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½) */
+        RCC->PLLCFGR |= 3 << 16;            /* DIVP1EN = 1, DIVQ1EN = 1, Ê¹ï¿½ï¿½pll1_p_ckï¿½ï¿½pll1_q_ckï¿½ï¿½ï¿½ */
+        RCC->CR |= 1 << 24;                 /* PLL1ON = 1, Ê¹ï¿½ï¿½PLL1 */
         retry = 0;
 
-        while ((RCC->CR & (1 << 25)) == 0)  /* PLL1RDY = 1?, µÈ´ýPLL1×¼±¸ºÃ */
+        while ((RCC->CR & (1 << 25)) == 0)  /* PLL1RDY = 1?, ï¿½È´ï¿½PLL1×¼ï¿½ï¿½ï¿½ï¿½ */
         {
             retry++;
 
             if (retry > 0X1FFFFF)
             {
-                retval = 2; /* PLL1ÎÞ·¨¾ÍÐ÷ */
+                retval = 2; /* PLL1ï¿½Þ·ï¿½ï¿½ï¿½ï¿½ï¿½ */
                 break;
             }
         }
 
-        /* ÉèÖÃPLL2µÄR·ÖÆµÊä³ö, Îª220Mhz, ºóÐø×öTFTLCDÊ±ÖÓ, ¿ÉµÃµ½220MµÄfmc_ker_ckÊ±ÖÓÆµÂÊ */
-        RCC->PLLCKSELR |= 25 << 12;         /* DIVM2[5:0] = 25, ÉèÖÃPLL2µÄÔ¤·ÖÆµÏµÊý */
-        RCC->PLL2DIVR &= ~(0X1FF << 0);     /* Çå³ýDIVN2[8:0]Ô­À´µÄÉèÖÃ */
-        RCC->PLL2DIVR |= (440 - 1) << 0;    /* DIVN2[8:0] = 440 - 1, ÉèÖÃPLL2 VCOµÄ±¶ÆµÏµÊý, ÉèÖÃÖµÐè¼õ1 */
-        RCC->PLL2DIVR &= ~(0X7F << 9);      /* Çå³ýDIVP2[6:0]Ô­À´µÄÉèÖÃ */
-        RCC->PLL2DIVR |= (2 - 1) << 9;      /* DIVP2[6:0] = 2 - 1, ÉèÖÃPLL2µÄp·ÖÆµÏµÊý, ÉèÖÃÖµÐè¼õ1 */
-        RCC->PLL2DIVR &= ~(0X7F << 24);     /* Çå³ýDIVR2[6:0]Ô­À´µÄÉèÖÃ */
-        RCC->PLL2DIVR |= (2 - 1) << 24;     /* DIVR2[6:0] = 2 - 1, ÉèÖÃPLL2µÄr·ÖÆµÏµÊý, ÉèÖÃÖµÐè¼õ1 */
+        /* ï¿½ï¿½ï¿½ï¿½PLL2ï¿½ï¿½Rï¿½ï¿½Æµï¿½ï¿½ï¿½, Îª220Mhz, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½TFTLCDÊ±ï¿½ï¿½, ï¿½ÉµÃµï¿½220Mï¿½ï¿½fmc_ker_ckÊ±ï¿½ï¿½Æµï¿½ï¿½ */
+        RCC->PLLCKSELR |= 25 << 12;         /* DIVM2[5:0] = 25, ï¿½ï¿½ï¿½ï¿½PLL2ï¿½ï¿½Ô¤ï¿½ï¿½ÆµÏµï¿½ï¿½ */
+        RCC->PLL2DIVR &= ~(0X1FF << 0);     /* ï¿½ï¿½ï¿½DIVN2[8:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+        RCC->PLL2DIVR |= (440 - 1) << 0;    /* DIVN2[8:0] = 440 - 1, ï¿½ï¿½ï¿½ï¿½PLL2 VCOï¿½Ä±ï¿½ÆµÏµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½1 */
+        RCC->PLL2DIVR &= ~(0X7F << 9);      /* ï¿½ï¿½ï¿½DIVP2[6:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+        RCC->PLL2DIVR |= (2 - 1) << 9;      /* DIVP2[6:0] = 2 - 1, ï¿½ï¿½ï¿½ï¿½PLL2ï¿½ï¿½pï¿½ï¿½ÆµÏµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½1 */
+        RCC->PLL2DIVR &= ~(0X7F << 24);     /* ï¿½ï¿½ï¿½DIVR2[6:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+        RCC->PLL2DIVR |= (2 - 1) << 24;     /* DIVR2[6:0] = 2 - 1, ï¿½ï¿½ï¿½ï¿½PLL2ï¿½ï¿½rï¿½ï¿½ÆµÏµï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½ï¿½1 */
         
-        RCC->PLLCFGR |= 0 << 6;             /* PLL2RGE[1:0] = 0, PLL2ÊäÈëÊ±ÖÓÆµÂÊÔÚ1~2MhzÖ®¼ä(25 / 25 = 1Mhz) */
-        RCC->PLLCFGR |= 0 << 5;             /* PLL2VCOSEL = 0, PLL2µÄ¿íVCO·¶Î§, 192~836Mhz */
-        RCC->PLLCFGR |= 1 << 19;            /* DIVP2EN = 1, Ê¹ÄÜpll2_p_ckÊä³ö */
-        RCC->PLLCFGR |= 1 << 21;            /* DIVR2EN = 1, Ê¹ÄÜpll2_r_ckÊä³ö */
-        RCC->D1CCIPR &= ~(3 << 0);          /* Çå³ýFMCSEL[1:0]Ô­À´µÄÉèÖÃ */
-        RCC->D1CCIPR |= 2 << 0;             /* FMCSEL[1:0] = 2, Ñ¡Ôñpll2_r_ckÊ±ÖÓ×÷ÎªFMCÄÚºËÊ±ÖÓÔ´ */
-        RCC->CR |= 1 << 26;                 /* PLL2ON = 1, Ê¹ÄÜPLL2 */
+        RCC->PLLCFGR |= 0 << 6;             /* PLL2RGE[1:0] = 0, PLL2ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½1~2MhzÖ®ï¿½ï¿½(25 / 25 = 1Mhz) */
+        RCC->PLLCFGR |= 0 << 5;             /* PLL2VCOSEL = 0, PLL2ï¿½Ä¿ï¿½VCOï¿½ï¿½Î§, 192~836Mhz */
+        RCC->PLLCFGR |= 1 << 19;            /* DIVP2EN = 1, Ê¹ï¿½ï¿½pll2_p_ckï¿½ï¿½ï¿½ */
+        RCC->PLLCFGR |= 1 << 21;            /* DIVR2EN = 1, Ê¹ï¿½ï¿½pll2_r_ckï¿½ï¿½ï¿½ */
+        RCC->D1CCIPR &= ~(3 << 0);          /* ï¿½ï¿½ï¿½FMCSEL[1:0]Ô­ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
+        RCC->D1CCIPR |= 2 << 0;             /* FMCSEL[1:0] = 2, Ñ¡ï¿½ï¿½pll2_r_ckÊ±ï¿½ï¿½ï¿½ï¿½ÎªFMCï¿½Úºï¿½Ê±ï¿½ï¿½Ô´ */
+        RCC->CR |= 1 << 26;                 /* PLL2ON = 1, Ê¹ï¿½ï¿½PLL2 */
         retry = 0;
 
-        while ((RCC->CR & (1 << 27)) == 0)  /* PLL2RDY = 1?, µÈ´ýPLL2×¼±¸ºÃ */
+        while ((RCC->CR & (1 << 27)) == 0)  /* PLL2RDY = 1?, ï¿½È´ï¿½PLL2×¼ï¿½ï¿½ï¿½ï¿½ */
         {
             retry++;
 
             if (retry > 0X1FFFFF)
             {
-                retval = 3; /* PLL2ÎÞ·¨¾ÍÐ÷ */
+                retval = 3; /* PLL2ï¿½Þ·ï¿½ï¿½ï¿½ï¿½ï¿½ */
                 break;
             }
         }
 
-        RCC->D1CFGR |= 8 << 0;              /* HREF[3:0] = 8, rcc_hclk1/2/3/4  =  sys_d1cpre_ck / 2 = 480 / 2 = 240Mhz, ¼´AHB1/2/3/4 = 240Mhz */
-        RCC->D1CFGR |= 0 << 8;              /* D1CPRE[2:0] = 0, sys_d1cpre_ck = sys_clk / 1 = 480 / 1 = 480Mhz, ¼´CPUÊ±ÖÓ = 480Mhz */
-        RCC->CFGR |= 3 << 0;                /* SW[2:0] = 3, ÏµÍ³Ê±ÖÓ(sys_clk)Ñ¡ÔñÀ´×Ôpll1_p_ck, ¼´480Mhz */
+        RCC->D1CFGR |= 8 << 0;              /* HREF[3:0] = 8, rcc_hclk1/2/3/4  =  sys_d1cpre_ck / 2 = 480 / 2 = 240Mhz, ï¿½ï¿½AHB1/2/3/4 = 240Mhz */
+        RCC->D1CFGR |= 0 << 8;              /* D1CPRE[2:0] = 0, sys_d1cpre_ck = sys_clk / 1 = 480 / 1 = 480Mhz, ï¿½ï¿½CPUÊ±ï¿½ï¿½ = 480Mhz */
+        RCC->CFGR |= 3 << 0;                /* SW[2:0] = 3, ÏµÍ³Ê±ï¿½ï¿½(sys_clk)Ñ¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½pll1_p_ck, ï¿½ï¿½480Mhz */
         retry = 0;
 
-        while (swsval != 3)                 /* µÈ´ý³É¹¦½«ÏµÍ³Ê±ÖÓÔ´ÇÐ»»Îªpll1_p_ck */
+        while (swsval != 3)                 /* ï¿½È´ï¿½ï¿½É¹ï¿½ï¿½ï¿½ÏµÍ³Ê±ï¿½ï¿½Ô´ï¿½Ð»ï¿½Îªpll1_p_ck */
         {
-            swsval = (RCC->CFGR & (7 << 3)) >> 3;   /* »ñÈ¡SWS[2:0]µÄ×´Ì¬, ÅÐ¶ÏÊÇ·ñÇÐ»»³É¹¦ */
+            swsval = (RCC->CFGR & (7 << 3)) >> 3;   /* ï¿½ï¿½È¡SWS[2:0]ï¿½ï¿½×´Ì¬, ï¿½Ð¶ï¿½ï¿½Ç·ï¿½ï¿½Ð»ï¿½ï¿½É¹ï¿½ */
             retry++;
 
             if (retry > 0X1FFFFF)
             {
-                retval = 4; /* ÎÞ·¨ÇÐ»»Ê±ÖÓ */
+                retval = 4; /* ï¿½Þ·ï¿½ï¿½Ð»ï¿½Ê±ï¿½ï¿½ */
                 break;
             }
         }
 
-        FLASH->ACR |= 4 << 0;               /* LATENCY[3:0] = 4, 4¸öCPUµÈ´ýÖÜÆÚ(@VOS0 Level, maxclock = 240Mhz) */
-        FLASH->ACR |= 2 << 4;               /* WRHIGHFREQ[1:0] = 2, ±à³Ì²Ù×÷Ê±FlashÐÅºÅÑÓ³ÙÎª2 */
-        RCC->D1CFGR |= 4 << 4;              /* D1PPRE[2:0] = 4,  rcc_pclk3 = rcc_hclk3/2 = 120Mhz, ¼´APB3 = 120Mhz */
-        RCC->D2CFGR |= 4 << 4;              /* D2PPRE1[2:0] = 4, rcc_pclk1 = rcc_hclk1/2 = 120Mhz, ¼´APB1 = 120Mhz */
-        RCC->D2CFGR |= 4 << 8;              /* D2PPRE2[2:0] = 4, rcc_pclk2 = rcc_hclk1/2 = 120Mhz, ¼´APB2 = 120Mhz */
-        RCC->D3CFGR |= 4 << 4;              /* D3PPRE[2:0] = 4,  rcc_pclk4 = rcc_hclk4/2 = 120Mhz, ¼´APB4 = 120Mhz */
+        FLASH->ACR |= 4 << 0;               /* LATENCY[3:0] = 4, 4ï¿½ï¿½CPUï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½(@VOS0 Level, maxclock = 240Mhz) */
+        FLASH->ACR |= 2 << 4;               /* WRHIGHFREQ[1:0] = 2, ï¿½ï¿½Ì²ï¿½ï¿½ï¿½Ê±Flashï¿½Åºï¿½ï¿½Ó³ï¿½Îª2 */
+        RCC->D1CFGR |= 4 << 4;              /* D1PPRE[2:0] = 4,  rcc_pclk3 = rcc_hclk3/2 = 120Mhz, ï¿½ï¿½APB3 = 120Mhz */
+        RCC->D2CFGR |= 4 << 4;              /* D2PPRE1[2:0] = 4, rcc_pclk1 = rcc_hclk1/2 = 120Mhz, ï¿½ï¿½APB1 = 120Mhz */
+        RCC->D2CFGR |= 4 << 8;              /* D2PPRE2[2:0] = 4, rcc_pclk2 = rcc_hclk1/2 = 120Mhz, ï¿½ï¿½APB2 = 120Mhz */
+        RCC->D3CFGR |= 4 << 4;              /* D3PPRE[2:0] = 4,  rcc_pclk4 = rcc_hclk4/2 = 120Mhz, ï¿½ï¿½APB4 = 120Mhz */
         
-        RCC->CR |= 1 << 7;                  /* CSION = 1, Ê¹ÄÜCSI, ÎªI/O²¹³¥µ¥ÔªÌá¹©Ê±ÖÓ */
-        RCC->APB4ENR |= 1 << 1;             /* SYSCFGEN = 1, Ê¹ÄÜSYSCFGÊ±ÖÓ */
-        SYSCFG->CCCSR |= 1 << 0;            /* EN = 1, Ê¹ÄÜI/O²¹³¥µ¥Ôª */
+        RCC->CR |= 1 << 7;                  /* CSION = 1, Ê¹ï¿½ï¿½CSI, ÎªI/Oï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôªï¿½á¹©Ê±ï¿½ï¿½ */
+        RCC->APB4ENR |= 1 << 1;             /* SYSCFGEN = 1, Ê¹ï¿½ï¿½SYSCFGÊ±ï¿½ï¿½ */
+        SYSCFG->CCCSR |= 1 << 0;            /* EN = 1, Ê¹ï¿½ï¿½I/Oï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ôª */
     }
 
     return retval;
 }
 
 /**
- * @brief       ÏµÍ³Ê±ÖÓ³õÊ¼»¯º¯Êý
- * @param       plln: PLL1 VCOµÄ±¶ÆµÏµÊý(PLL±¶Æµ), È¡Öµ·¶Î§: 4~512.
- * @param       pllm: PLL1Ô¤·ÖÆµÏµÊý(½øPLLÖ®Ç°µÄ·ÖÆµ), È¡Öµ·¶Î§: 1~63.
- * @param       pllp: PLL1µÄp·ÖÆµÏµÊý(PLLÖ®ºóµÄ·ÖÆµ), ·ÖÆµºó×÷ÎªÏµÍ³Ê±ÖÓ, È¡Öµ·¶Î§: 1~128.(³ý1Íâ²»ÄÜÎªÆæÊý)
- * @param       pllq: PLL1µÄq·ÖÆµÏµÊý(PLLÖ®ºóµÄ·ÖÆµ), È¡Öµ·¶Î§: 1~128.
- * @retval      ÎÞ
+ * @brief       ÏµÍ³Ê±ï¿½Ó³ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+ * @param       plln: PLL1 VCOï¿½Ä±ï¿½ÆµÏµï¿½ï¿½(PLLï¿½ï¿½Æµ), È¡Öµï¿½ï¿½Î§: 4~512.
+ * @param       pllm: PLL1Ô¤ï¿½ï¿½ÆµÏµï¿½ï¿½(ï¿½ï¿½PLLÖ®Ç°ï¿½Ä·ï¿½Æµ), È¡Öµï¿½ï¿½Î§: 1~63.
+ * @param       pllp: PLL1ï¿½ï¿½pï¿½ï¿½ÆµÏµï¿½ï¿½(PLLÖ®ï¿½ï¿½Ä·ï¿½Æµ), ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½ÎªÏµÍ³Ê±ï¿½ï¿½, È¡Öµï¿½ï¿½Î§: 1~128.(ï¿½ï¿½1ï¿½â²»ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½)
+ * @param       pllq: PLL1ï¿½ï¿½qï¿½ï¿½ÆµÏµï¿½ï¿½(PLLÖ®ï¿½ï¿½Ä·ï¿½Æµ), È¡Öµï¿½ï¿½Î§: 1~128.
+ * @retval      ï¿½ï¿½
  */
 void sys_stm32_clock_init(uint32_t plln, uint32_t pllm, uint32_t pllp, uint32_t pllq)
 {
-    RCC->CR = 0x00000001;           /* ÉèÖÃHSION, ¿ªÆôÄÚ²¿¸ßËÙRCÕñµ´£¬ÆäËûÎ»È«ÇåÁã */
-    RCC->CFGR = 0x00000000;         /* CFGRÇåÁã */
-    RCC->D1CFGR = 0x00000000;       /* D1CFGRÇåÁã */
-    RCC->D2CFGR = 0x00000000;       /* D2CFGRÇåÁã */
-    RCC->D3CFGR = 0x00000000;       /* D3CFGRÇåÁã */
-    RCC->PLLCKSELR = 0x00000000;    /* PLLCKSELRÇåÁã */
-    RCC->PLLCFGR = 0x00000000;      /* PLLCFGRÇåÁã */
-    RCC->CIER = 0x00000000;         /* CIERÇåÁã, ½ûÖ¹ËùÓÐRCCÏà¹ØÖÐ¶Ï */
+    RCC->CR = 0x00000001;           /* ï¿½ï¿½ï¿½ï¿½HSION, ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½RCï¿½ñµ´£ï¿½ï¿½ï¿½ï¿½ï¿½Î»È«ï¿½ï¿½ï¿½ï¿½ */
+    RCC->CFGR = 0x00000000;         /* CFGRï¿½ï¿½ï¿½ï¿½ */
+    RCC->D1CFGR = 0x00000000;       /* D1CFGRï¿½ï¿½ï¿½ï¿½ */
+    RCC->D2CFGR = 0x00000000;       /* D2CFGRï¿½ï¿½ï¿½ï¿½ */
+    RCC->D3CFGR = 0x00000000;       /* D3CFGRï¿½ï¿½ï¿½ï¿½ */
+    RCC->PLLCKSELR = 0x00000000;    /* PLLCKSELRï¿½ï¿½ï¿½ï¿½ */
+    RCC->PLLCFGR = 0x00000000;      /* PLLCFGRï¿½ï¿½ï¿½ï¿½ */
+    RCC->CIER = 0x00000000;         /* CIERï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½Ö¹ï¿½ï¿½ï¿½ï¿½RCCï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ */
 
-    GPV->AXI_TARG7_FN_MOD = 0x00000001;     /* ÉèÖÃAXI SRAMµÄ¾ØÕó¶ÁÈ¡ÄÜÁ¦Îª1 */
+    GPV->AXI_TARG7_FN_MOD = 0x00000001;     /* ï¿½ï¿½ï¿½ï¿½AXI SRAMï¿½Ä¾ï¿½ï¿½ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Îª1 */
     
-    sys_clock_set(plln, pllm, pllp, pllq);  /* ÉèÖÃÊ±ÖÓ */
-    sys_cache_enable();                     /* Ê¹ÄÜL1 Cache */
+    sys_clock_set(plln, pllm, pllp, pllq);  /* ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½ */
+    sys_cache_enable();                     /* Ê¹ï¿½ï¿½L1 Cache */
 
-    /* ÅäÖÃÖÐ¶ÏÏòÁ¿Æ«ÒÆ */
+    /* ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ */
 #ifdef  VECT_TAB_RAM
     sys_nvic_set_vector_table(D1_AXISRAM_BASE, 0x0);
 #else

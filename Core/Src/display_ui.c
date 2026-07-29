@@ -1,6 +1,7 @@
 #include "display_ui.h"
 #include "lcd.h"
 #include <string.h>
+#include <stdio.h>
 
 /* ══════════════════════════════════════════════════════════════════════════
  * Internal types
@@ -149,6 +150,11 @@ static uint8_t retry1_state  = 0u;
 static uint8_t retry2_state  = 0u;
 static uint8_t ttt_mid_state = 0u;   /* 0=none, 1=cell4, 2=cell5, 3=cell6 */
 static uint8_t ttt_top_state = 0u;   /* 0=none, 1=cell7, 2=cell8, 3=cell9 */
+
+/* ── RX page state (page 4) ─────────────────────────────────────────────── */
+#define RX_HEX_TEXT_LEN    128u
+static char rx_hex_text[RX_HEX_TEXT_LEN] = "No RX data";
+static uint32_t rx_error_count = 0u;
 
 /* ── Active page ───────────────────────────────────────────────────────── */
 static uint8_t active_page = DISPLAY_UI_PAGE_TX;
@@ -477,6 +483,36 @@ static void paint_lift_page(void)
         draw_ttt_idx(i);
 }
 
+static char hex_nibble_to_char(uint8_t nibble)
+{
+    nibble &= 0x0Fu;
+    return (nibble < 10u) ? (char)('0' + nibble) : (char)('A' + (nibble - 10u));
+}
+
+static void paint_rx_page(void)
+{
+    uint16_t w = lcddev.width;
+    uint16_t h = (uint16_t)(lcddev.height - SWIPE_MARGIN_H);
+    uint16_t text_y = (uint16_t)(FONT_SIZE + CELL_PAD * 2u);
+    uint16_t err_y  = (uint16_t)(h - FONT_SIZE - CELL_PAD);
+    char err_text[32];
+
+    lcd_clear(BLACK);
+    g_back_color = BLACK;
+
+    lcd_show_string(0u, 0u, w, FONT_SIZE, FONT_SIZE, "UART RX", WHITE);
+    lcd_show_string(CELL_PAD, text_y,
+                    (uint16_t)(w - CELL_PAD * 2u),
+                    (uint16_t)(err_y - text_y),
+                    16u, rx_hex_text, GREEN);
+
+    /* Diagnostic: count of UART errors (noise/framing/parity/overrun)
+     * recovered from since boot. Should stay at 0 on a healthy link;
+     * a climbing count means the line itself is being corrupted. */
+    (void)snprintf(err_text, sizeof(err_text), "Errs: %lu", (unsigned long)rx_error_count);
+    lcd_show_string(CELL_PAD, err_y, w, FONT_SIZE, FONT_SIZE, err_text, RED);
+}
+
 static void paint_motor_page(void)
 {
     lcd_clear(BLACK);
@@ -777,6 +813,8 @@ void display_ui_draw(void)
         paint_motor_page();
     else if (active_page == DISPLAY_UI_PAGE_TX)
         paint_tx_page();
+    else if (active_page == DISPLAY_UI_PAGE_RX)
+        paint_rx_page();
     else
         paint_lift_page();
 }
@@ -785,7 +823,7 @@ void display_ui_draw(void)
 
 void display_ui_set_page(uint8_t page)
 {
-    if (page > DISPLAY_UI_PAGE_LIFT)
+    if (page > DISPLAY_UI_PAGE_RX)
         return;
     active_page = page;
     display_ui_draw();
@@ -1097,5 +1135,65 @@ void display_ui_set_ttt_top_state(uint8_t mode)
         draw_ttt_idx(0u);
         draw_ttt_idx(1u);
         draw_ttt_idx(2u);
+    }
+}
+
+/* ── Page 4 (RX) state setters ──────────────────────────────────────────── */
+
+void display_ui_set_rx_bytes(const uint8_t *data, uint16_t len)
+{
+    uint16_t max_bytes;
+    uint16_t pos = 0u;
+
+    if ((data == NULL) || (len == 0u))
+    {
+        return;
+    }
+
+    max_bytes = (uint16_t)((RX_HEX_TEXT_LEN - 1u) / 3u);
+    if (len > max_bytes)
+    {
+        /* Keep only the most recent bytes if the burst overflows the
+         * on-screen buffer, so the display always shows the latest data. */
+        data += (len - max_bytes);
+        len = max_bytes;
+    }
+
+    for (uint16_t i = 0u; i < len; i++)
+    {
+        if ((pos + 2u) >= RX_HEX_TEXT_LEN)
+        {
+            break;
+        }
+        rx_hex_text[pos++] = hex_nibble_to_char((uint8_t)(data[i] >> 4));
+        rx_hex_text[pos++] = hex_nibble_to_char(data[i]);
+        if (i != (uint16_t)(len - 1u))
+        {
+            if ((pos + 1u) >= RX_HEX_TEXT_LEN)
+            {
+                break;
+            }
+            rx_hex_text[pos++] = ' ';
+        }
+    }
+    rx_hex_text[pos] = '\0';
+
+    if (active_page == DISPLAY_UI_PAGE_RX)
+    {
+        paint_rx_page();
+    }
+}
+
+void display_ui_set_rx_error_count(uint32_t count)
+{
+    if (count == rx_error_count)
+    {
+        return;
+    }
+    rx_error_count = count;
+
+    if (active_page == DISPLAY_UI_PAGE_RX)
+    {
+        paint_rx_page();
     }
 }

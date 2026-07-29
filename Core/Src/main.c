@@ -35,6 +35,8 @@
 #define DISPLAY_UI_CAM 0u
 #define DISPLAY_UI_SCREEN 1u
 
+#define UART_RX_READ_BUF_LEN 64u
+
 /*
  * Swipe detection
  * ──────────────────────────────────────────────────────────────────────────
@@ -53,6 +55,7 @@ static uint8_t g_scroll_mode = DISPLAY_UI_SCROLL_AR;
 static uint8_t g_matrix_state[GRID_CELL_COUNT];
 
 static uint32_t g_last_uart_sent_ms = 0u;
+static uint8_t  g_uart_rx_read_buf[UART_RX_READ_BUF_LEN];
 
 static const uint8_t g_uart_cell_order[GRID_CELL_COUNT] =
 {
@@ -483,7 +486,7 @@ static uint8_t check_swipe(uint16_t x_down, uint16_t y_down,
 
     if (dx > 0)
     {
-        if (current_page < DISPLAY_UI_PAGE_LIFT)
+        if (current_page < DISPLAY_UI_PAGE_RX)
             display_ui_set_page((uint8_t)(current_page + 1u));
     }
     else
@@ -533,6 +536,16 @@ int main(void)
         {
             send_uart_frame();
             g_last_uart_sent_ms = now_ms;
+        }
+
+        /* ── UART receive ─────────────────────────────────────────────── */
+        {
+            uint16_t rx_len = usart1_rx_dma_read(g_uart_rx_read_buf, UART_RX_READ_BUF_LEN);
+            if (rx_len > 0u)
+            {
+                display_ui_set_rx_bytes(g_uart_rx_read_buf, rx_len);
+            }
+            display_ui_set_rx_error_count(usart1_get_rx_error_count());
         }
 
         /* ── Touch scan ───────────────────────────────────────────────── */

@@ -22,6 +22,7 @@ static volatile uint8_t g_usart1_tx_busy = 0U;
 static uint8_t g_usart1_tx_buf[USART1_DMA_TX_BUF_SIZE];
 static uint8_t g_usart1_rx_buf[USART1_DMA_RX_BUF_SIZE];
 static volatile uint16_t g_usart1_rx_read_idx = 0U;
+static volatile uint32_t g_usart1_rx_error_count = 0U;
 
 static uint16_t usart1_rx_dma_write_idx(void)
 {
@@ -226,6 +227,35 @@ void usart1_send_bytes(const uint8_t *data, uint16_t len)
         data += chunk_len;
         len -= chunk_len;
     }
+}
+
+/**
+ * @brief  HAL calls this on any RX error (noise/framing/parity/overrun).
+ *         With circular DMA RX, HAL's default behaviour on any of these
+ *         errors is to abort the DMA channel, which would otherwise leave
+ *         RX permanently dead until reset. Clear the error flags and
+ *         re-arm DMA reception so a single line glitch can't kill
+ *         reception for the rest of the session.
+ */
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)
+    {
+        g_usart1_rx_error_count++;
+
+        __HAL_UART_CLEAR_OREFLAG(huart);
+        __HAL_UART_CLEAR_NEFLAG(huart);
+        __HAL_UART_CLEAR_FEFLAG(huart);
+        __HAL_UART_CLEAR_PEFLAG(huart);
+        huart->ErrorCode = HAL_UART_ERROR_NONE;
+
+        usart1_start_rx_dma();
+    }
+}
+
+uint32_t usart1_get_rx_error_count(void)
+{
+    return g_usart1_rx_error_count;
 }
 
 void usart1_start_rx_dma(void)
